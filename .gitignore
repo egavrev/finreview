@@ -44,3 +44,6 @@ htmlcov/
 
 # Project-specific
 PDF_examples/*.pdf
+*.sqlite
+*.db
+db.sqlite
