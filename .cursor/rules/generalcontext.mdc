@@ -1,5 +1,10 @@
 ---
-description:
-globs:
 alwaysApply: true
 ---
+You would need to build an aplication which is going to process pdf files which are exports of account information for certian period, 
+tool needs to take statistical infomration, information on each operations, de-duplicate it find right type of each operations or add new type according with operations description. To generate report on certian period and to give details on each type of operations separately. 
+
+Back-end is - Python 3.11/3.12, Pydantic v2, SQLAlchemy/SQLModel, Alembic
+API service: FastAPI, 
+DB : start with SQLight when more mature move to PostgresSQL
+Frontend: Next.js (TypeScript), shadcn/ui;  https://tailwindcss.com/s
