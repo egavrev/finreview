@@ -1,149 +1,195 @@
-# Financial Review Application
+# Financial Review API
 
-A modern web application for processing and analyzing PDF financial statements. Built with FastAPI backend and Next.js frontend.
+A comprehensive financial document processing system that extracts and analyzes card operations from PDF account statements.
 
 ## Features
 
-- 📄 **PDF Upload & Processing**: Upload financial statement PDFs and extract key data
-- 📊 **Statistics Dashboard**: View overall statistics and summaries
-- 💰 **Operations Analysis**: Detailed view of all financial operations
-- 🎨 **Modern UI**: Clean, responsive interface built with shadcn/ui and Tailwind CSS
-- 🔍 **Data Persistence**: SQLite database with SQLModel ORM
+- **PDF Processing**: Extract financial data from PDF account statements
+- **Data Analysis**: Parse and categorize financial operations
+- **Database Storage**: Store processed data using SQLAlchemy/SQLModel
+- **REST API**: FastAPI-based API for uploading and querying financial data
+- **Comprehensive Testing**: 88% code coverage with unit and integration tests
 
 ## Architecture
 
-- **Backend**: FastAPI (Python 3.11+) with SQLModel/SQLAlchemy
-- **Frontend**: Next.js 13+ with TypeScript and Tailwind CSS
-- **Database**: SQLite (can be migrated to PostgreSQL)
-- **UI Components**: shadcn/ui design system
+- **Backend**: Python 3.11/3.12 with FastAPI
+- **Database**: SQLite (development) / PostgreSQL (production)
+- **ORM**: SQLAlchemy/SQLModel with Pydantic v2
+- **PDF Processing**: pdfplumber for text and table extraction
+- **Testing**: pytest with coverage reporting
 
-## Quick Start
-
-### Prerequisites
-
-- Python 3.11 or higher
-- Node.js 16+ (for frontend)
-- npm or yarn
-
-### Backend Setup
-
-1. **Install Python dependencies**:
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-2. **Initialize the database**:
-   ```bash
-   python db_init.py
-   ```
-
-3. **Start the FastAPI server**:
-   ```bash
-   python api/main.py
-   ```
-   
-   The API will be available at `http://localhost:8000`
-
-### Frontend Setup
-
-1. **Navigate to frontend directory**:
-   ```bash
-   cd frontend
-   ```
-
-2. **Install dependencies**:
-   ```bash
-   npm install
-   ```
-
-3. **Start the development server**:
-   ```bash
-   npm run dev
-   ```
-   
-   The frontend will be available at `http://localhost:3000`
-
-## Usage
-
-### Uploading PDFs
-
-1. Open the web application at `http://localhost:3000`
-2. Click "Choose File" and select a PDF financial statement
-3. Click "Upload" to process the PDF
-4. View the extracted data in the dashboard
-
-### Viewing Statistics
-
-The dashboard shows:
-- Total number of processed PDFs
-- Total operations extracted
-- Total withdrawals (iesiri)
-- Average amount per operation
-
-### Analyzing Operations
-
-1. Click "View Details" on any PDF in the dashboard
-2. See detailed information about:
-   - Client and account information
-   - Balance ranges (initial/final)
-   - Complete list of operations with dates and amounts
-
-## API Endpoints
-
-- `GET /` - API health check
-- `POST /upload-pdf` - Upload and process a PDF file
-- `GET /pdfs` - List all processed PDFs
-- `GET /pdfs/{id}` - Get details for a specific PDF
-- `GET /operations` - List operations with optional filtering
-- `GET /statistics` - Get overall statistics
-
-## Development
-
-### Project Structure
+## Project Structure
 
 ```
 finreview/
 ├── api/
 │   └── main.py              # FastAPI application
-├── frontend/
-│   ├── src/
-│   │   ├── app/             # Next.js app router
-│   │   ├── components/      # UI components
-│   │   └── lib/             # Utilities
-│   └── package.json
-├── tests/                   # Python tests
+├── tests/
+│   ├── conftest.py          # Pytest configuration
+│   ├── test_api.py          # API endpoint tests
+│   ├── test_pdf_processor.py # PDF processing tests
+│   └── test_sql_utils.py    # Database utility tests
+├── PDF_examples/            # Sample PDF files
 ├── pdf_processor.py         # PDF processing logic
-├── sql_utils.py            # Database utilities
-├── ingest_pdf.py           # CLI for batch processing
-└── requirements.txt        # Python dependencies
+├── sql_utils.py            # Database operations
+├── requirements.txt         # Python dependencies
+├── run_tests.py            # Test runner script
+└── README.md               # This file
 ```
 
-### Running Tests
+## Installation
+
+1. Clone the repository:
+```bash
+git clone <repository-url>
+cd finreview
+```
+
+2. Create a virtual environment:
+```bash
+python -m venv venv
+source venv/bin/activate  # On Windows: venv\Scripts\activate
+```
+
+3. Install dependencies:
+```bash
+pip install -r requirements.txt
+```
+
+## Usage
+
+### Running the API
+
+Start the FastAPI server:
+```bash
+python api/main.py
+```
+
+The API will be available at `http://localhost:8000`
+
+### API Endpoints
+
+- `GET /` - Health check
+- `GET /pdfs` - List all processed PDFs
+- `POST /upload-pdf` - Upload and process a PDF file
+- `GET /pdfs/{pdf_id}` - Get details of a specific PDF
+- `GET /pdfs/{pdf_id}/operations` - Get operations for a specific PDF
+
+### Processing PDFs from Command Line
 
 ```bash
-# Run Python tests
-pytest
-
-# Run with coverage
-pytest --cov=.
+python pdf_processor.py path/to/your/file.pdf
 ```
 
-### Database Management
+## Testing
 
-The application uses SQLite by default. To migrate to PostgreSQL:
+### Running All Tests
 
-1. Update the database URL in `sql_utils.py`
-2. Install PostgreSQL dependencies
-3. Run database migrations
+```bash
+python run_tests.py
+```
+
+### Running Specific Test Types
+
+```bash
+# Unit tests only
+python run_tests.py unit
+
+# Integration tests only
+python run_tests.py integration
+```
+
+### Running Tests with Coverage
+
+```bash
+# Run tests with coverage report
+PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 python -m coverage run -m pytest tests/ -v
+
+# Generate coverage report
+python -m coverage report -m --include="*.py" --omit="*/site-packages/*,*/tests/*"
+```
+
+### Test Coverage
+
+Current test coverage: **88%**
+
+- `pdf_processor.py`: 88% coverage
+- `sql_utils.py`: 100% coverage  
+- `api/main.py`: 79% coverage
+
+## Test Structure
+
+### Unit Tests (`tests/test_pdf_processor.py`)
+- PDF text extraction and parsing
+- Number normalization and amount parsing
+- Table-based data extraction
+- Pattern matching and search
+- CLI functionality
+
+### Unit Tests (`tests/test_sql_utils.py`)
+- Database engine creation and initialization
+- PDF summary storage and retrieval
+- Operation storage and replacement
+- Database query operations
+- Model validation
+
+### Integration Tests (`tests/test_api.py`)
+- API endpoint functionality
+- File upload validation
+- Error handling
+- CORS configuration
+- Database integration
+
+## Development
+
+### Adding New Tests
+
+1. Create test functions in the appropriate test file
+2. Use pytest fixtures for common setup
+3. Follow the naming convention: `test_<functionality>`
+4. Add appropriate assertions and error checking
+
+### Test Configuration
+
+The test configuration is in `tests/conftest.py`:
+- Automatic test categorization (unit/integration)
+- Common fixtures for database and file operations
+- Path configuration for imports
+
+### Running Tests in Development
+
+```bash
+# Run tests with verbose output
+PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 python -m pytest tests/ -v
+
+# Run specific test file
+PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 python -m pytest tests/test_api.py -v
+
+# Run tests matching a pattern
+PYTEST_DISABLE_PLUGIN_AUTOLOAD=1 python -m pytest tests/ -k "test_upload" -v
+```
+
+## Dependencies
+
+### Core Dependencies
+- `fastapi`: Web framework
+- `sqlmodel`: SQL database ORM
+- `pdfplumber`: PDF text extraction
+- `pydantic`: Data validation
+- `uvicorn`: ASGI server
+
+### Testing Dependencies
+- `pytest`: Testing framework
+- `pytest-cov`: Coverage reporting
+- `httpx`: HTTP client for testing
 
 ## Contributing
 
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Add tests for new functionality
-5. Submit a pull request
+1. Write tests for new functionality
+2. Ensure test coverage remains above 80%
+3. Run the full test suite before submitting changes
+4. Follow the existing code style and patterns
 
 ## License
 
-This project is licensed under the MIT License.
+[Add your license information here]
