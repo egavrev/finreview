@@ -2,9 +2,9 @@
 
 import { useState, useEffect } from 'react'
 import { FileText, BarChart3, DollarSign, TrendingUp } from 'lucide-react'
+import Link from 'next/link'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-
-
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 
 interface Statistics {
   total_pdfs: number
@@ -14,13 +14,26 @@ interface Statistics {
   average_amount_per_operation: number
 }
 
+interface PDF {
+  id: number
+  file_path: string
+  client_name: string | null
+  account_number: string | null
+  total_iesiri: number | null
+  sold_initial: number | null
+  sold_final: number | null
+  created_at: string | null
+}
+
 const API_BASE = 'http://localhost:8000'
 
 export default function Dashboard() {
   const [statistics, setStatistics] = useState<Statistics | null>(null)
+  const [pdfs, setPdfs] = useState<PDF[]>([])
 
   useEffect(() => {
     fetchStatistics()
+    fetchPDFs()
   }, [])
 
   const fetchStatistics = async () => {
@@ -33,7 +46,15 @@ export default function Dashboard() {
     }
   }
 
-
+  const fetchPDFs = async () => {
+    try {
+      const response = await fetch(`${API_BASE}/pdfs`)
+      const data = await response.json()
+      setPdfs(data)
+    } catch (error) {
+      console.error('Error fetching PDFs:', error)
+    }
+  }
 
   const formatCurrency = (amount: number | null) => {
     if (amount === null) return 'N/A'
@@ -98,7 +119,48 @@ export default function Dashboard() {
         </div>
       )}
 
-
+      {/* Processed PDFs Table */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <FileText className="h-5 w-5" />
+            Processed PDFs
+          </CardTitle>
+          <CardDescription>List of all processed financial statements</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>ID</TableHead>
+                <TableHead>Client</TableHead>
+                <TableHead>Account</TableHead>
+                <TableHead>Total Iesiri</TableHead>
+                <TableHead>Initial Balance</TableHead>
+                <TableHead>Final Balance</TableHead>
+                <TableHead>File</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {pdfs.map((pdf) => (
+                <TableRow key={pdf.id}>
+                  <TableCell>{pdf.id}</TableCell>
+                  <TableCell>{pdf.client_name || 'N/A'}</TableCell>
+                  <TableCell>{pdf.account_number || 'N/A'}</TableCell>
+                  <TableCell>{formatCurrency(pdf.total_iesiri)}</TableCell>
+                  <TableCell>{formatCurrency(pdf.sold_initial)}</TableCell>
+                  <TableCell>{formatCurrency(pdf.sold_final)}</TableCell>
+                  <TableCell>
+                    <Link href={`/pdf/${pdf.id}`} className="text-blue-600 hover:underline">
+                      View Details
+                    </Link>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
     </div>
   )
 }

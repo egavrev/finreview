@@ -2,10 +2,8 @@
 
 import { useState, useEffect } from 'react'
 import { Upload, FileText } from 'lucide-react'
-import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 
 interface PDF {
   id: number
@@ -76,20 +74,12 @@ export default function FilesPage() {
     }
   }
 
-  const formatCurrency = (amount: number | null) => {
-    if (amount === null) return 'N/A'
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'MDL',
-    }).format(amount)
-  }
-
   return (
     <div className="p-8 space-y-6">
       <div className="mb-8">
         <h1 className="text-3xl font-bold tracking-tight">Files</h1>
         <p className="text-muted-foreground">
-          Manage your uploaded PDF files and documents.
+          Upload and manage your PDF financial statements.
         </p>
       </div>
       
@@ -127,46 +117,22 @@ export default function FilesPage() {
         </CardContent>
       </Card>
 
-      {/* PDFs Table */}
+      {/* Upload Status */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <FileText className="h-5 w-5" />
-            Processed PDFs
+            Upload Status
           </CardTitle>
-          <CardDescription>List of all processed financial statements</CardDescription>
+          <CardDescription>Track your uploaded files and processing status</CardDescription>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>ID</TableHead>
-                <TableHead>Client</TableHead>
-                <TableHead>Account</TableHead>
-                <TableHead>Total Iesiri</TableHead>
-                <TableHead>Initial Balance</TableHead>
-                <TableHead>Final Balance</TableHead>
-                <TableHead>File</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {pdfs.map((pdf) => (
-                <TableRow key={pdf.id}>
-                  <TableCell>{pdf.id}</TableCell>
-                  <TableCell>{pdf.client_name || 'N/A'}</TableCell>
-                  <TableCell>{pdf.account_number || 'N/A'}</TableCell>
-                  <TableCell>{formatCurrency(pdf.total_iesiri)}</TableCell>
-                  <TableCell>{formatCurrency(pdf.sold_initial)}</TableCell>
-                  <TableCell>{formatCurrency(pdf.sold_final)}</TableCell>
-                  <TableCell>
-                    <Link href={`/pdf/${pdf.id}`} className="text-blue-600 hover:underline">
-                      View Details
-                    </Link>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+          <p className="text-sm text-muted-foreground">
+            Total files uploaded: {pdfs.length}
+          </p>
+          <p className="text-sm text-muted-foreground mt-2">
+            View all processed PDFs on the <a href="/" className="text-blue-600 hover:underline">Dashboard</a>.
+          </p>
         </CardContent>
       </Card>
     </div>
