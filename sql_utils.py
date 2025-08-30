@@ -463,3 +463,209 @@ def auto_assign_all_high_confidence_operations(
     return assigned_count
 
 
+def get_monthly_report_data(
+    session: Session,
+    year: int,
+    month: int,
+) -> dict:
+    """
+    Get monthly report data grouped by operation types
+    
+    Args:
+        session: Database session
+        year: Year for the report
+        month: Month for the report (1-12)
+        
+    Returns:
+        Dictionary with pie chart data and summary statistics
+    """
+    from sqlalchemy import func, extract
+    
+    # Get operations for the specified month
+    operations_query = select(OperationRow, OperationType).outerjoin(
+        OperationType, OperationRow.type_id == OperationType.id
+    ).where(
+        extract('year', func.date(OperationRow.transaction_date)) == year,
+        extract('month', func.date(OperationRow.transaction_date)) == month
+    )
+    
+    operations_with_types = session.exec(operations_query).all()
+    
+    # Group by operation type
+    type_groups = {}
+    total_amount = 0
+    total_operations = 0
+    
+    for op, op_type in operations_with_types:
+        type_name = op_type.name if op_type else "Uncategorized"
+        type_id = op_type.id if op_type else None
+        
+        if type_name not in type_groups:
+            type_groups[type_name] = {
+                "type_id": type_id,
+                "type_name": type_name,
+                "total_amount": 0,
+                "operation_count": 0,
+                "operations": []
+            }
+        
+        amount = op.amount_lei or 0
+        type_groups[type_name]["total_amount"] += amount
+        type_groups[type_name]["operation_count"] += 1
+        type_groups[type_name]["operations"].append({
+            "id": op.id,
+            "transaction_date": op.transaction_date,
+            "processed_date": op.processed_date,
+            "description": op.description,
+            "amount_lei": op.amount_lei,
+        })
+        
+        total_amount += amount
+        total_operations += 1
+    
+    # Sort operations within each group by amount (descending)
+    for group in type_groups.values():
+        group["operations"].sort(key=lambda x: x["amount_lei"] or 0, reverse=True)
+    
+    # Create pie chart data
+    pie_chart_data = [
+        {
+            "name": group["type_name"],
+            "value": group["total_amount"],
+            "color": f"hsl({hash(group['type_name']) % 360}, 70%, 50%)"
+        }
+        for group in type_groups.values()
+        if group["total_amount"] > 0
+    ]
+    
+    # Sort groups by total amount (descending)
+    sorted_groups = sorted(
+        type_groups.values(),
+        key=lambda x: x["total_amount"],
+        reverse=True
+    )
+    
+    return {
+        "year": year,
+        "month": month,
+        "total_amount": total_amount,
+        "total_operations": total_operations,
+        "type_groups": sorted_groups,
+        "pie_chart_data": pie_chart_data,
+        "summary": {
+            "average_amount_per_operation": total_amount / total_operations if total_operations > 0 else 0,
+            "most_expensive_type": sorted_groups[0]["type_name"] if sorted_groups else None,
+            "most_expensive_amount": sorted_groups[0]["total_amount"] if sorted_groups else 0,
+        }
+    }
+
+
+def get_available_months(session: Session) -> List[dict]:
+    """
+    Get list of available months with data
+    
+    Returns:
+        List of dictionaries with year and month
+    """
+    from sqlalchemy import func, extract
+    
+    # Get unique year-month combinations from operations
+    query = select(
+        extract('year', func.date(OperationRow.transaction_date)).label('year'),
+        extract('month', func.date(OperationRow.transaction_date)).label('month')
+    ).distinct().where(
+        OperationRow.transaction_date.is_not(None)
+    ).order_by(
+        extract('year', func.date(OperationRow.transaction_date)).desc(),
+        extract('month', func.date(OperationRow.transaction_date)).desc()
+    )
+    
+    results = session.exec(query).all()
+    
+    return [
+        {
+            "year": int(year),
+            "month": int(month),
+            "label": f"{year}-{month:02d}"
+        }
+        for year, month in results
+        if year is not None and month is not None
+    ]
+
+
+def get_operations_by_type_for_month(
+    session: Session,
+    type_id: int,
+    year: int,
+    month: int,
+    limit: int = 10,
+    offset: int = 0,
+) -> dict:
+    """
+    Get operations of a specific type for a given month with pagination
+    
+    Args:
+        session: Database session
+        type_id: Operation type ID
+        year: Year
+        month: Month (1-12)
+        limit: Number of operations to return
+        offset: Number of operations to skip
+        
+    Returns:
+        Dictionary with operations and pagination info
+    """
+    from sqlalchemy import func, extract
+    
+    # Get operation type
+    op_type = get_operation_type_by_id(session, type_id)
+    if not op_type:
+        return {"error": "Operation type not found"}
+    
+    # Get operations for the type and month
+    query = select(OperationRow).where(
+        OperationRow.type_id == type_id,
+        extract('year', func.date(OperationRow.transaction_date)) == year,
+        extract('month', func.date(OperationRow.transaction_date)) == month
+    ).order_by(
+        OperationRow.amount_lei.desc()
+    ).offset(offset).limit(limit)
+    
+    operations = session.exec(query).all()
+    
+    # Get total count for pagination
+    count_query = select(func.count(OperationRow.id)).where(
+        OperationRow.type_id == type_id,
+        extract('year', func.date(OperationRow.transaction_date)) == year,
+        extract('month', func.date(OperationRow.transaction_date)) == month
+    )
+    total_count = session.exec(count_query).first()
+    
+    return {
+        "type": {
+            "id": op_type.id,
+            "name": op_type.name,
+            "description": op_type.description,
+        },
+        "year": year,
+        "month": month,
+        "operations": [
+            {
+                "id": op.id,
+                "pdf_id": op.pdf_id,
+                "transaction_date": op.transaction_date,
+                "processed_date": op.processed_date,
+                "description": op.description,
+                "amount_lei": op.amount_lei,
+            }
+            for op in operations
+        ],
+        "pagination": {
+            "limit": limit,
+            "offset": offset,
+            "total": total_count,
+            "has_more": (offset + limit) < total_count
+        }
+    }
+
+

@@ -18,7 +18,7 @@ from sql_utils import (
     get_pdf_by_path, get_operations_for_pdf, create_operation_type, get_operation_types,
     get_operation_type_by_id, update_operation_type, delete_operation_type,
     assign_operation_type, get_operations_by_type, get_operations_with_types,
-    get_operations_with_null_types
+    get_operations_with_null_types, get_available_months, get_monthly_report_data, get_operations_by_type_for_month
 )
 from pdf_processor import PDFSummary, Operation
 
@@ -346,6 +346,46 @@ async def get_operations_with_null_types_endpoint(
         }
         for op in operations
     ]
+
+# Monthly Reports endpoints
+@app.get("/reports/available-months")
+async def get_available_months_endpoint(session: Session = Depends(get_session)):
+    """Get list of available months with data"""
+    return get_available_months(session)
+
+
+@app.get("/reports/monthly/{year}/{month}")
+async def get_monthly_report(
+    year: int,
+    month: int,
+    session: Session = Depends(get_session)
+):
+    """Get monthly report data with pie chart and grouped operations"""
+    if month < 1 or month > 12:
+        raise HTTPException(status_code=400, detail="Month must be between 1 and 12")
+    
+    return get_monthly_report_data(session, year, month)
+
+
+@app.get("/reports/monthly/{year}/{month}/type/{type_id}")
+async def get_monthly_operations_by_type(
+    year: int,
+    month: int,
+    type_id: int,
+    limit: int = 10,
+    offset: int = 0,
+    session: Session = Depends(get_session)
+):
+    """Get operations of a specific type for a given month with pagination"""
+    if month < 1 or month > 12:
+        raise HTTPException(status_code=400, detail="Month must be between 1 and 12")
+    
+    result = get_operations_by_type_for_month(session, type_id, year, month, limit, offset)
+    
+    if "error" in result:
+        raise HTTPException(status_code=404, detail=result["error"])
+    
+    return result
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)

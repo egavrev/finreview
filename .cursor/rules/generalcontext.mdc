@@ -1,6 +1,8 @@
 ---
 alwaysApply: true
 ---
+I'm not good at frone-end development so all what has to do with react and other front-end libraries please try to explain in details. 
+
 You would need to build an aplication which is going to process pdf files which are exports of account information for certian period, 
 tool needs to take statistical infomration, information on each operations, de-duplicate it find right type of each operations or add new type according with operations description. To generate report on certian period and to give details on each type of operations separately. 
 
