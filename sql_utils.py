@@ -18,9 +18,17 @@ class PDF(SQLModel, table=True):
     created_at: Optional[str] = Field(default=None)  # could be set by app if needed
 
 
+class OperationType(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    name: str = Field(unique=True, index=True)
+    description: Optional[str] = None
+    created_at: Optional[str] = Field(default=None)
+
+
 class OperationRow(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     pdf_id: int = Field(foreign_key="pdf.id")
+    type_id: Optional[int] = Field(default=None, foreign_key="operationtype.id")
     transaction_date: Optional[str] = None
     processed_date: Optional[str] = None
     description: Optional[str] = None
@@ -108,6 +116,93 @@ def get_pdf_by_path(session: Session, file_path: str | Path) -> Optional[PDF]:
 
 def get_operations_for_pdf(session: Session, pdf_id: int) -> List[OperationRow]:
     return list(session.exec(select(OperationRow).where(OperationRow.pdf_id == pdf_id).order_by(OperationRow.id)))
+
+
+def create_operation_type(session: Session, name: str, description: Optional[str] = None) -> OperationType:
+    """Create a new operation type"""
+    operation_type = OperationType(name=name, description=description)
+    session.add(operation_type)
+    session.commit()
+    session.refresh(operation_type)
+    return operation_type
+
+
+def get_operation_types(session: Session) -> List[OperationType]:
+    """Get all operation types"""
+    return list(session.exec(select(OperationType).order_by(OperationType.name)))
+
+
+def get_operation_type_by_id(session: Session, type_id: int) -> Optional[OperationType]:
+    """Get operation type by ID"""
+    return session.exec(select(OperationType).where(OperationType.id == type_id)).first()
+
+
+def get_operation_type_by_name(session: Session, name: str) -> Optional[OperationType]:
+    """Get operation type by name"""
+    return session.exec(select(OperationType).where(OperationType.name == name)).first()
+
+
+def update_operation_type(session: Session, type_id: int, name: Optional[str] = None, description: Optional[str] = None) -> Optional[OperationType]:
+    """Update an operation type"""
+    operation_type = get_operation_type_by_id(session, type_id)
+    if operation_type:
+        if name is not None:
+            operation_type.name = name
+        if description is not None:
+            operation_type.description = description
+        session.add(operation_type)
+        session.commit()
+        session.refresh(operation_type)
+    return operation_type
+
+
+def delete_operation_type(session: Session, type_id: int) -> bool:
+    """Delete an operation type (only if no operations are using it)"""
+    operation_type = get_operation_type_by_id(session, type_id)
+    if operation_type:
+        # Check if any operations are using this type
+        operations_using_type = session.exec(select(OperationRow).where(OperationRow.type_id == type_id)).first()
+        if operations_using_type:
+            return False  # Cannot delete if operations are using this type
+        
+        session.delete(operation_type)
+        session.commit()
+        return True
+    return False
+
+
+def assign_operation_type(session: Session, operation_id: int, type_id: Optional[int]) -> Optional[OperationRow]:
+    """Assign a type to an operation"""
+    operation = session.exec(select(OperationRow).where(OperationRow.id == operation_id)).first()
+    if operation:
+        operation.type_id = type_id
+        session.add(operation)
+        session.commit()
+        session.refresh(operation)
+    return operation
+
+
+def get_operations_by_type(session: Session, type_id: int) -> List[OperationRow]:
+    """Get all operations of a specific type"""
+    return list(session.exec(select(OperationRow).where(OperationRow.type_id == type_id).order_by(OperationRow.transaction_date)))
+
+
+def get_operations_with_types(session: Session, pdf_id: Optional[int] = None) -> List[Tuple[OperationRow, Optional[OperationType]]]:
+    """Get operations with their associated types"""
+    query = select(OperationRow, OperationType).outerjoin(OperationType, OperationRow.type_id == OperationType.id)
+    if pdf_id:
+        query = query.where(OperationRow.pdf_id == pdf_id)
+    query = query.order_by(OperationRow.transaction_date)
+    return list(session.exec(query))
+
+
+def get_operations_with_null_types(session: Session, pdf_id: Optional[int] = None) -> List[OperationRow]:
+    """Get operations that have null type_id"""
+    query = select(OperationRow).where(OperationRow.type_id.is_(None))
+    if pdf_id:
+        query = query.where(OperationRow.pdf_id == pdf_id)
+    query = query.order_by(OperationRow.transaction_date)
+    return list(session.exec(query))
 
 
 def process_and_store(

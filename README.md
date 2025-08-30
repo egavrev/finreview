@@ -8,6 +8,9 @@ A comprehensive financial document processing system that extracts and analyzes 
 - **Data Analysis**: Parse and categorize financial operations
 - **Database Storage**: Store processed data using SQLAlchemy/SQLModel
 - **REST API**: FastAPI-based API for uploading and querying financial data
+- **Operations Management**: Web interface for categorizing and managing financial operations
+- **Type Assignment**: Assign operation types to uncategorized transactions
+- **Custom Types**: Create new operation types for better categorization
 - **Comprehensive Testing**: 88% code coverage with unit and integration tests
 
 ## Architecture
@@ -24,6 +27,14 @@ A comprehensive financial document processing system that extracts and analyzes 
 finreview/
 ├── api/
 │   └── main.py              # FastAPI application
+├── frontend/                # Next.js frontend application
+│   ├── src/
+│   │   ├── app/            # Next.js app router pages
+│   │   │   ├── operations/ # Operations management page
+│   │   │   ├── reports/    # Reports page
+│   │   │   └── pdf/        # PDF details page
+│   │   └── components/     # Reusable UI components
+│   └── package.json        # Frontend dependencies
 ├── tests/
 │   ├── conftest.py          # Pytest configuration
 │   ├── test_api.py          # API endpoint tests
@@ -67,13 +78,48 @@ python api/main.py
 
 The API will be available at `http://localhost:8000`
 
+### Running the Frontend
+
+Start the Next.js development server:
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+The frontend will be available at `http://localhost:3000`
+
+### Operations Management
+
+The operations page (`/operations`) provides a comprehensive interface for managing financial operations:
+
+- **View Uncategorized Operations**: See all operations that need type assignment
+- **Assign Types**: Select from existing operation types or create new ones
+- **Create Custom Types**: Add new categories for better organization
+- **Real-time Updates**: Changes are immediately reflected in the interface
+
+To use the operations management:
+
+1. Upload PDF files through the API or frontend
+2. Navigate to the Operations page
+3. Review operations that need categorization
+4. Click "Assign Type" for any operation
+5. Select an existing type or create a new one
+6. Operations are automatically updated in the database
+
 ### API Endpoints
 
 - `GET /` - Health check
 - `GET /pdfs` - List all processed PDFs
 - `POST /upload-pdf` - Upload and process a PDF file
 - `GET /pdfs/{pdf_id}` - Get details of a specific PDF
-- `GET /pdfs/{pdf_id}/operations` - Get operations for a specific PDF
+- `GET /operations` - List all operations with optional filtering
+- `GET /operations/null-types` - Get operations that need type assignment
+- `GET /operations/with-types` - Get operations with their associated types
+- `GET /operation-types` - List all operation types
+- `POST /operation-types` - Create a new operation type
+- `POST /operations/{operation_id}/assign-type` - Assign a type to an operation
+- `GET /statistics` - Get overall statistics
 
 ### Processing PDFs from Command Line
 
