@@ -5,6 +5,15 @@ from dataclasses import dataclass, asdict
 from pathlib import Path
 from typing import List, Optional, Tuple
 
+# Import operations matcher
+try:
+    from operations_matcher import get_matcher, MatchResult, ClassificationSuggestion
+except ImportError:
+    # Fallback if operations_matcher is not available
+    get_matcher = None
+    MatchResult = None
+    ClassificationSuggestion = None
+
 
 try:
     import pdfplumber  # type: ignore
@@ -449,6 +458,78 @@ def main() -> None:
 
     ops = extract_card_operations(args.pdf, debug=getattr(args, "debug", False))
     print(json.dumps([asdict(op) for op in ops], ensure_ascii=False, indent=2))
+
+
+# Operations matching functions
+def classify_operations_with_matcher(operations: List[Operation], config_path: Optional[str] = None) -> List[ClassificationSuggestion]:
+    """
+    Classify operations using the operations matcher
+    
+    Args:
+        operations: List of operations to classify
+        config_path: Optional path to configuration file
+        
+    Returns:
+        List of classification suggestions
+    """
+    if get_matcher is None:
+        return []
+    
+    try:
+        matcher = get_matcher(config_path)
+        # Convert operations to (id, description) tuples for the matcher
+        operation_tuples = [(i, op.description) for i, op in enumerate(operations) if op.description]
+        return matcher.get_classification_suggestions(operation_tuples)
+    except Exception as e:
+        print(f"Error in operations matching: {e}", file=sys.stderr)
+        return []
+
+
+def extract_and_classify_operations(pdf_path: str, config_path: Optional[str] = None, debug: bool = False) -> Tuple[List[Operation], List[ClassificationSuggestion]]:
+    """
+    Extract operations from PDF and classify them using the matcher
+    
+    Args:
+        pdf_path: Path to the PDF file
+        config_path: Optional path to configuration file
+        debug: Enable debug logging
+        
+    Returns:
+        Tuple of (operations, classification_suggestions)
+    """
+    # Extract operations
+    operations = extract_card_operations(pdf_path, debug=debug)
+    
+    # Classify operations
+    suggestions = classify_operations_with_matcher(operations, config_path)
+    
+    return operations, suggestions
+
+
+def get_high_confidence_suggestions(suggestions: List[ClassificationSuggestion]) -> List[ClassificationSuggestion]:
+    """
+    Filter suggestions to only include high confidence ones that should be auto-assigned
+    
+    Args:
+        suggestions: List of all classification suggestions
+        
+    Returns:
+        List of high confidence suggestions for auto-assignment
+    """
+    return [s for s in suggestions if s.should_auto_assign]
+
+
+def get_medium_confidence_suggestions(suggestions: List[ClassificationSuggestion]) -> List[ClassificationSuggestion]:
+    """
+    Filter suggestions to only include medium confidence ones for user review
+    
+    Args:
+        suggestions: List of all classification suggestions
+        
+    Returns:
+        List of medium confidence suggestions for user review
+    """
+    return [s for s in suggestions if not s.should_auto_assign and s.confidence >= 70]
 
 
 if __name__ == "__main__":

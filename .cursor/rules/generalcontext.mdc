@@ -8,3 +8,5 @@ Back-end is - Python 3.11/3.12, Pydantic v2, SQLAlchemy/SQLModel, Alembic
 API service: FastAPI, 
 DB : start with SQLight when more mature move to PostgresSQL
 Frontend: Next.js (TypeScript), shadcn/ui;  https://tailwindcss.com/s
+
+For runing Python scripts use all the time .venv container

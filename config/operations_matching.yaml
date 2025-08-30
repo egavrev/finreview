@@ -1,0 +1,245 @@
+# Operations Matching Configuration
+# This file defines rules for automatically classifying financial operations
+
+# Confidence thresholds for each layer
+confidence_thresholds:
+  exact_match: 100
+  fuzzy_match_auto: 95
+  fuzzy_match_suggest: 85
+  keyword_match_auto: 80
+  keyword_match_suggest: 70
+  pattern_match_auto: 75
+  pattern_match_suggest: 65
+
+# Fuzzy matching configuration
+fuzzy_matching:
+  algorithm: "levenshtein"  # Options: levenshtein, jaro_winkler, cosine
+  min_similarity: 85
+  max_candidates: 5
+
+# Exact match rules - direct string comparisons
+exact_matches:
+  # Food and grocery
+  "AGROBAZAR": "Food"
+  "LATTI FOODMART M": "Food"
+  "NR 1 MOSCOVA SELF": "Food"
+  "MARKET PANCARLEAN": "Food"
+  "MAGAZIN NR 1": "Food"
+  "LINELLA 112": "Food"
+  #Education
+  "LIBRARIUS": "Education"
+  "CRAFTI Moscova": "Education"
+
+  # Healthcare
+  "FARMACIA FAMILIEI": "Healthcare"
+  "FARM.FAMILIEI": "Healthcare"
+  "APOTECA MIRON": "Healthcare"
+  "PRODIAFARM SRL": "Healthcare"
+  "INVITRO DIAGNOSTICS": "Healthcare"
+  "CME SANCOS": "Healthcare"
+  
+  #Restaraunts
+  "RESTAURANT JERAFFE": "Restaurant"
+  "RESTAURANT DOMINION": "Restaurant"
+
+
+  # Entertainment
+  "BE BEAUTY Salon": "Entertainment"
+  "BEER BOSS TIME SRL": "Entertainment"
+  
+  
+  # Shopping
+  "IURALEX COM SRL": "Shopping"
+  "Galdracom SRL": "Shopping"
+  "Barbaris butic Soiuz": "Shopping"
+  "CC SOIUZ BUT 325": "Shopping"
+
+  
+  # Services
+  "EA STUDIO FIT SRL": "Entertainment"
+  "PRACTIC-ASIG S.R.L.": "Bills"
+  
+  
+  # Utilities and bills
+  "OPENAI": "Bills"
+  
+  # Transfers
+  "P2P de iesire de pe cardul": "Transfer"
+  "A2A de intrare pe cardul": "Transfer"
+  "A2A de intrare pe car": "Transfer"
+
+# Keyword matching rules
+keyword_matches:
+  # Food and grocery keywords
+  food:
+    keywords: ["AGRO", "MARKET", "FRANZELUTA", "FOODMART", "MAGAZIN", "SELF", "CAFE", "PIZZA", "FOOD", "GROCERY", "SUPERMARKET","LINELLA","GAINUSA","OCEAN FISH","EXTRAORDINARIUS","PRODIMIT","BAKERY","JLC","LATTESE","FARM.FAMILIEI"]
+    weight: 90
+    type: "Food"
+  
+  # Healthcare keywords
+  healthcare:
+    keywords: ["FARMACIA", "APOTECA", "PHARMACY", "DIAGNOSTIC", "MEDICAL", "HEALTH", "CLINIC", "DOCTOR", "HOSPITAL"]
+    weight: 85
+    type: "Healthcare"
+  
+  # Entertainment keywords
+  entertainment:
+    keywords: ["SALON", "BEAUTY", "FITNESS", "GYM", "SPA", "CINEMA", "THEATER", "CONCERT", "ENTERTAINMENT", "LEISURE","Galdracom","GRANIER"]
+    weight: 85
+    type: "Entertainment"
+
+  #restaurant
+  restaurant:
+    keywords: ["PAPA JERRY", "CAFE"]
+    weight: 85
+    type: "Restaurant"
+  
+  # Transport keywords
+  transport:
+    keywords: ["GAS", "PETROL", "FUEL", "TAXI", "UBER", "TRANSPORT", "BUS", "TRAIN", "PRACTIC-ASIG","DAAC HERMES"]
+    weight: 85
+    type: "Transport"
+  
+  # Shopping keywords
+  shopping:
+    keywords: ["SHOP", "MAGAZIN", "STORE", "RETAIL", "CLOTHING", "SHOES", "ELECTRONICS", "ZOLUSCA","VITESSE","BARBARIS","KAWAICAT","LIALMAX"]
+    weight: 85
+    type: "Shopping"
+  
+  # Bills and utilities
+  bills:
+    keywords: ["BILL", "UTILITY", "ELECTRICITY", "WATER", "GAS", "INTERNET", "PHONE", "MOBILE", "SERVICE", "SUBSCRIPTION","PRACTIC-ASIG"]
+    weight: 90
+    type: "Bills"
+  
+  # Education
+  education:
+    keywords: ["SCHOOL", "UNIVERSITY", "COURSE", "TRAINING", "EDUCATION", "LEARNING", "BOOKS", "TUTORIAL", "LIBRARIUS","CRAFTI"]
+    weight: 80
+    type: "Education"
+  #construction 
+  construction:
+    keywords: ["SUPRATEN", "CONTRACT", "CONTRACTOR", "CONSTRUCTION", "CONSTRUCTION", "CONSTRUCTION"]
+    weight: 85
+    type: "Construction"
+
+
+
+  # Travel
+  travel:
+    keywords: ["TRAVEL", "VACATION", "HOTEL", "AIRLINE", "FLIGHT", "TOURISM", "HOLIDAY", "TRIP"]
+    weight: 85
+    type: "Travel"
+  
+  # Investment
+  investment:
+    keywords: ["INVESTMENT", "STOCK", "BOND", "FUND", "SAVINGS", "DEPOSIT", "BROKER", "TRADING", ]
+    weight: 90
+    type: "Investment"
+
+# Pattern matching rules using regular expressions
+pattern_matches:
+  # Food patterns
+  food_patterns:
+    patterns:
+      - ".*AGRO.*"
+      - ".*MARKET.*"
+      - ".*FOOD.*"
+      - ".*RESTAURANT.*"
+      - ".*CAFE.*"
+      - ".*PIZZA.*"
+      - ".*SELF.*"
+    weight: 75
+    type: "Food"
+  
+  # Healthcare patterns
+  healthcare_patterns:
+    patterns:
+      - ".*FARMACIA.*"
+      - ".*APOTECA.*"
+      - ".*MEDICAL.*"
+      - ".*HEALTH.*"
+      - ".*DIAGNOSTIC.*"
+    weight: 80
+    type: "Healthcare"
+  
+  # Entertainment patterns
+  entertainment_patterns:
+    patterns:
+      - ".*SALON.*"
+      - ".*BEAUTY.*"
+      - ".*FITNESS.*"
+      - ".*GYM.*"
+      - ".*SPA.*"
+      - ".*CINEMA.*"
+      - ".*THEATER.*"
+    weight: 70
+    type: "Entertainment"
+  
+  # Transport patterns
+  transport_patterns:
+    patterns:
+      - ".*GAS.*"
+      - ".*PETROL.*"
+      - ".*FUEL.*"
+      - ".*TAXI.*"
+      - ".*TRANSPORT.*"
+      - ".*PARKING.*"
+    weight: 75
+    type: "Transport"
+  
+  # Shopping patterns
+  shopping_patterns:
+    patterns:
+      - ".*SHOP.*"
+      - ".*MAGAZIN.*"
+      - ".*STORE.*"
+      - ".*RETAIL.*"
+      - ".*CLOTHING.*"
+      - ".*ELECTRONICS.*"
+    weight: 65
+    type: "Shopping"
+  
+  # Bills patterns
+  bills_patterns:
+    patterns:
+      - ".*BILL.*"
+      - ".*UTILITY.*"
+      - ".*SERVICE.*"
+      - ".*SUBSCRIPTION.*"
+      - ".*INTERNET.*"
+      - ".*PHONE.*"
+    weight: 80
+    type: "Bills"
+  
+  # Transfer patterns
+  transfer_patterns:
+    patterns:
+      - ".*P2P.*"
+      - ".*A2A.*"
+      - ".*TRANSFER.*"
+      - ".*CARDUL.*"
+    weight: 90
+    type: "Transfer"
+
+# Learning configuration
+learning:
+  # Track successful matches for improving rules
+  track_success: true
+  # Minimum confidence to consider for learning
+  min_confidence_for_learning: 70
+  # Maximum number of learned patterns to store
+  max_learned_patterns: 1000
+  # Weight for learned patterns (lower than predefined)
+  learned_pattern_weight: 60
+
+# Performance settings
+performance:
+  # Cache size for exact matches
+  exact_match_cache_size: 1000
+  # Cache size for fuzzy matches
+  fuzzy_match_cache_size: 500
+  # Enable caching
+  enable_caching: true
+  # Batch processing size
+  batch_size: 100
