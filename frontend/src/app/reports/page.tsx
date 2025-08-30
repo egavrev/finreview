@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { FileText, Calendar, PieChart, BarChart3, Eye, ChevronRight } from 'lucide-react'
+import { FileText, Calendar, PieChart, BarChart3, Eye, ChevronRight, Clock, TrendingUp } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -202,19 +202,94 @@ export default function ReportsPage() {
 
   const CustomTooltip = ({ active, payload }: any) => {
     if (active && payload && payload.length) {
+      const data = payload[0]
+      const percentage = ((data.value / reportData!.total_amount) * 100).toFixed(1)
       return (
-        <div className="bg-white p-3 border rounded-lg shadow-lg">
-          <p className="font-medium">{payload[0].name}</p>
-          <p className="text-sm text-gray-600">
-            {formatCurrency(payload[0].value)}
-          </p>
-          <p className="text-xs text-gray-500">
-            {((payload[0].value / reportData!.total_amount) * 100).toFixed(1)}%
-          </p>
+        <div className="bg-white p-4 border rounded-lg shadow-xl border-gray-200">
+          <div className="flex items-center gap-2 mb-2">
+            <div 
+              className="w-3 h-3 rounded-full" 
+              style={{ backgroundColor: data.color }}
+            />
+            <p className="font-semibold text-gray-900">{data.name}</p>
+          </div>
+          <div className="space-y-1">
+            <p className="text-lg font-bold text-gray-900">
+              {formatCurrency(data.value)}
+            </p>
+            <p className="text-sm text-gray-600">
+              {percentage}% of total
+            </p>
+          </div>
         </div>
       )
     }
     return null
+  }
+
+  const CustomLegend = ({ payload }: any) => {
+    if (!payload || !reportData) return null
+
+    return (
+      <div className="mt-6">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+          {payload.map((entry: any, index: number) => {
+            const percentage = ((entry.value / reportData.total_amount) * 100).toFixed(1)
+            const isSelected = selectedPieSlice === entry.value
+            return (
+              <div
+                key={index}
+                className={`flex items-center gap-2 p-2 rounded-lg cursor-pointer transition-all duration-200 ${
+                  isSelected 
+                    ? 'bg-blue-50 border border-blue-200' 
+                    : 'hover:bg-gray-50'
+                }`}
+                onClick={() => handlePieSliceClick({ name: entry.value })}
+              >
+                <div 
+                  className="w-3 h-3 rounded-full flex-shrink-0" 
+                  style={{ backgroundColor: entry.color }}
+                />
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-medium text-gray-900 truncate">
+                    {entry.value}
+                  </p>
+                  <p className="text-xs text-gray-500">
+                    {percentage}% • {formatCurrency(entry.payload.value)}
+                  </p>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      </div>
+    )
+  }
+
+  // Custom label renderer for pie chart
+  const renderCustomLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, percent, name }: any) => {
+    const RADIAN = Math.PI / 180
+    const radius = innerRadius + (outerRadius - innerRadius) * 0.5
+    const x = cx + radius * Math.cos(-midAngle * RADIAN)
+    const y = cy + radius * Math.sin(-midAngle * RADIAN)
+
+    // Only show labels for slices with more than 5% or if it's the selected slice
+    const shouldShowLabel = (percent || 0) > 0.05 || selectedPieSlice === name
+
+    if (!shouldShowLabel) return null
+
+    return (
+      <text
+        x={x}
+        y={y}
+        fill="white"
+        textAnchor={x > cx ? 'start' : 'end'}
+        dominantBaseline="central"
+        className="text-xs font-medium drop-shadow-sm"
+      >
+        {(percent || 0) > 0.05 ? `${((percent || 0) * 100).toFixed(0)}%` : ''}
+      </text>
+    )
   }
 
   // Filter type groups based on selected pie slice
@@ -223,29 +298,31 @@ export default function ReportsPage() {
     : reportData?.type_groups || []
 
   return (
-    <div className="p-8 space-y-6">
+    <div className="p-6 lg:p-8 space-y-6 max-w-7xl mx-auto">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold tracking-tight">Reports</h1>
-        <p className="text-muted-foreground">
-          Generate and view financial reports and analytics by month.
+        <h1 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-gray-900 to-gray-600 bg-clip-text text-transparent">
+          Financial Reports
+        </h1>
+        <p className="text-muted-foreground text-lg">
+          Generate and view comprehensive financial reports and analytics by month.
         </p>
       </div>
 
       {/* Month Selection */}
-      <Card>
+      <Card className="border-0 shadow-lg bg-gradient-to-r from-white to-gray-50">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Calendar className="h-5 w-5" />
+          <CardTitle className="flex items-center gap-2 text-gray-800">
+            <Calendar className="h-5 w-5 text-blue-600" />
             Select Month
           </CardTitle>
-          <CardDescription>
+          <CardDescription className="text-gray-600">
             Choose a month to view detailed financial reports and analytics.
           </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="flex items-center gap-4">
             <Select value={selectedMonth} onValueChange={setSelectedMonth}>
-              <SelectTrigger className="w-64">
+              <SelectTrigger className="w-64 border-gray-300 focus:border-blue-500 focus:ring-blue-500">
                 <SelectValue placeholder="Select a month" />
               </SelectTrigger>
               <SelectContent>
@@ -256,7 +333,12 @@ export default function ReportsPage() {
                 ))}
               </SelectContent>
             </Select>
-            {loading && <div className="text-sm text-muted-foreground">Loading...</div>}
+            {loading && (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+                Loading...
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>
@@ -265,42 +347,54 @@ export default function ReportsPage() {
       {reportData && (
         <>
           {/* Summary Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium">Total Amount</CardTitle>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <Card className="border-0 shadow-lg bg-gradient-to-br from-blue-50 to-blue-100">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm font-medium text-blue-800 flex items-center gap-2">
+                  <TrendingUp className="h-4 w-4" />
+                  Total Amount
+                </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{formatCurrency(reportData.total_amount)}</div>
+                <div className="text-2xl font-bold text-blue-900">{formatCurrency(reportData.total_amount)}</div>
               </CardContent>
             </Card>
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium">Total Operations</CardTitle>
+            <Card className="border-0 shadow-lg bg-gradient-to-br from-green-50 to-green-100">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm font-medium text-green-800 flex items-center gap-2">
+                  <BarChart3 className="h-4 w-4" />
+                  Total Operations
+                </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{reportData.total_operations}</div>
+                <div className="text-2xl font-bold text-green-900">{reportData.total_operations}</div>
               </CardContent>
             </Card>
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium">Average per Operation</CardTitle>
+            <Card className="border-0 shadow-lg bg-gradient-to-br from-purple-50 to-purple-100">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm font-medium text-purple-800 flex items-center gap-2">
+                  <PieChart className="h-4 w-4" />
+                  Average per Operation
+                </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">
+                <div className="text-2xl font-bold text-purple-900">
                   {formatCurrency(reportData.summary.average_amount_per_operation)}
                 </div>
               </CardContent>
             </Card>
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium">Largest Category</CardTitle>
+            <Card className="border-0 shadow-lg bg-gradient-to-br from-orange-50 to-orange-100">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm font-medium text-orange-800 flex items-center gap-2">
+                  <FileText className="h-4 w-4" />
+                  Largest Category
+                </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-lg font-bold">
+                <div className="text-lg font-bold text-orange-900">
                   {reportData.summary.most_expensive_type || 'N/A'}
                 </div>
-                <div className="text-sm text-muted-foreground">
+                <div className="text-sm text-orange-700">
                   {formatCurrency(reportData.summary.most_expensive_amount)}
                 </div>
               </CardContent>
@@ -308,67 +402,76 @@ export default function ReportsPage() {
           </div>
 
           {/* Pie Chart */}
-          <Card>
+          <Card className="border-0 shadow-lg">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <PieChart className="h-5 w-5" />
+              <CardTitle className="flex items-center gap-2 text-gray-800">
+                <Clock className="h-5 w-5 text-blue-600" />
                 Spending Distribution
               </CardTitle>
-              <CardDescription>
-                Click on any slice to filter operations below by that category.
+              <CardDescription className="text-gray-600">
+                Click on any slice or legend item to filter operations below by that category.
               </CardDescription>
             </CardHeader>
             <CardContent>
               {reportData.pie_chart_data.length > 0 ? (
-                <div className="h-80">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <RechartsPieChart>
-                      <Pie
-                        data={reportData.pie_chart_data}
-                        cx="50%"
-                        cy="50%"
-                        labelLine={false}
-                        label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                        outerRadius={120}
-                        fill="#8884d8"
-                        dataKey="value"
-                        onClick={handlePieSliceClick}
-                        style={{ cursor: 'pointer' }}
-                      >
-                        {reportData.pie_chart_data.map((entry, index) => (
-                          <Cell 
-                            key={`cell-${index}`} 
-                            fill={entry.color}
-                            style={{ 
-                              cursor: 'pointer',
-                              opacity: selectedPieSlice && selectedPieSlice !== entry.name ? 0.5 : 1
-                            }}
-                          />
-                        ))}
-                      </Pie>
-                      <Tooltip content={<CustomTooltip />} />
-                      <Legend />
-                    </RechartsPieChart>
-                  </ResponsiveContainer>
+                <div className="space-y-6">
+                  <div className="h-96">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <RechartsPieChart>
+                        <Pie
+                          data={reportData.pie_chart_data}
+                          cx="50%"
+                          cy="50%"
+                          labelLine={false}
+                          label={renderCustomLabel}
+                          outerRadius={140}
+                          innerRadius={60}
+                          fill="#8884d8"
+                          dataKey="value"
+                          onClick={handlePieSliceClick}
+                          style={{ cursor: 'pointer' }}
+                        >
+                          {reportData.pie_chart_data.map((entry, index) => (
+                            <Cell 
+                              key={`cell-${index}`} 
+                              fill={entry.color}
+                              style={{ 
+                                cursor: 'pointer',
+                                opacity: selectedPieSlice && selectedPieSlice !== entry.name ? 0.4 : 1,
+                                transition: 'opacity 0.2s ease-in-out'
+                              }}
+                            />
+                          ))}
+                        </Pie>
+                        <Tooltip content={<CustomTooltip />} />
+                      </RechartsPieChart>
+                    </ResponsiveContainer>
+                  </div>
+                  <CustomLegend payload={reportData.pie_chart_data.map((entry, index) => ({
+                    value: entry.name,
+                    color: entry.color,
+                    payload: entry
+                  }))} />
                 </div>
               ) : (
                 <div className="text-center py-12 text-muted-foreground">
-                  No data available for this month.
+                  <PieChart className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                  <p className="text-lg font-medium">No data available for this month.</p>
                 </div>
               )}
             </CardContent>
           </Card>
 
           {/* Type Groups */}
-          <Card>
+          <Card className="border-0 shadow-lg">
             <CardHeader>
               <div className="flex items-center justify-between">
                 <div>
-                  <CardTitle className="flex items-center gap-2">
-                    <BarChart3 className="h-5 w-5" />
+                  <CardTitle className="flex items-center gap-2 text-gray-800">
+                    <BarChart3 className="h-5 w-5 text-blue-600" />
                     {selectedPieSlice ? `${selectedPieSlice} Operations` : 'Operation Types Breakdown'}
                   </CardTitle>
-                  <CardDescription>
+                  <CardDescription className="text-gray-600">
                     {selectedPieSlice 
                       ? `Showing operations for ${selectedPieSlice} category.`
                       : 'Click on any category to view top 10 operations, or click "Details" to see all operations.'
@@ -376,7 +479,12 @@ export default function ReportsPage() {
                   </CardDescription>
                 </div>
                 {selectedPieSlice && (
-                  <Button variant="outline" size="sm" onClick={clearSelection}>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={clearSelection}
+                    className="border-gray-300 hover:bg-gray-50"
+                  >
                     Show All Categories
                   </Button>
                 )}
@@ -385,27 +493,28 @@ export default function ReportsPage() {
             <CardContent>
               <div className="space-y-4">
                 {filteredTypeGroups.map((group) => (
-                  <div key={group.type_name} className="border rounded-lg p-4">
-                    <div className="flex items-center justify-between mb-3">
+                  <div key={group.type_name} className="border border-gray-200 rounded-xl p-6 hover:shadow-md transition-shadow duration-200 bg-white">
+                    <div className="flex items-center justify-between mb-4">
                       <div>
-                        <h3 className="font-semibold text-lg">{group.type_name}</h3>
-                        <p className="text-sm text-muted-foreground">
+                        <h3 className="font-semibold text-xl text-gray-900">{group.type_name}</h3>
+                        <p className="text-sm text-gray-600 flex items-center gap-1">
+                          <BarChart3 className="h-3 w-3" />
                           {group.operation_count} operations
                         </p>
                       </div>
                       <div className="text-right">
-                        <div className="text-xl font-bold">{formatCurrency(group.total_amount)}</div>
-                        <div className="text-sm text-muted-foreground">
+                        <div className="text-2xl font-bold text-gray-900">{formatCurrency(group.total_amount)}</div>
+                        <div className="text-sm text-gray-600 bg-gray-100 px-2 py-1 rounded-full inline-block">
                           {((group.total_amount / reportData.total_amount) * 100).toFixed(1)}%
                         </div>
                       </div>
                     </div>
-                    <div className="flex gap-2">
+                    <div className="flex gap-3">
                       <Button
                         variant="outline"
                         size="sm"
                         onClick={() => handleTypeGroupClick(group)}
-                        className="flex items-center gap-2"
+                        className="flex items-center gap-2 border-gray-300 hover:bg-gray-50"
                       >
                         <Eye className="h-4 w-4" />
                         Top 10
@@ -414,7 +523,7 @@ export default function ReportsPage() {
                         variant="outline"
                         size="sm"
                         onClick={() => handleShowAllOperations(group)}
-                        className="flex items-center gap-2"
+                        className="flex items-center gap-2 border-gray-300 hover:bg-gray-50"
                       >
                         <ChevronRight className="h-4 w-4" />
                         All Details
@@ -428,41 +537,47 @@ export default function ReportsPage() {
 
           {/* Type Operations Modal/Dialog */}
           {selectedTypeGroup && typeOperations && (
-            <Card>
+            <Card className="border-0 shadow-lg">
               <CardHeader>
-                <CardTitle>
+                <CardTitle className="text-gray-800">
                   {typeOperations.type.name} - {selectedMonth}
                 </CardTitle>
-                <CardDescription>
+                <CardDescription className="text-gray-600">
                   {showAllOperations ? 'All operations' : 'Top 10 operations by amount'}
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Date</TableHead>
-                      <TableHead>Description</TableHead>
-                      <TableHead className="text-right">Amount</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {typeOperations.operations.map((operation) => (
-                      <TableRow key={operation.id}>
-                        <TableCell>{formatDate(operation.transaction_date)}</TableCell>
-                        <TableCell className="max-w-md truncate">
-                          {operation.description}
-                        </TableCell>
-                        <TableCell className="text-right font-medium">
-                          {formatCurrency(operation.amount_lei)}
-                        </TableCell>
+                <div className="overflow-hidden rounded-lg border border-gray-200">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="bg-gray-50">
+                        <TableHead className="font-semibold text-gray-700">Date</TableHead>
+                        <TableHead className="font-semibold text-gray-700">Description</TableHead>
+                        <TableHead className="text-right font-semibold text-gray-700">Amount</TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                    </TableHeader>
+                    <TableBody>
+                      {typeOperations.operations.map((operation) => (
+                        <TableRow key={operation.id} className="hover:bg-gray-50">
+                          <TableCell className="font-medium text-gray-900">
+                            {formatDate(operation.transaction_date)}
+                          </TableCell>
+                          <TableCell className="max-w-md">
+                            <div className="truncate" title={operation.description}>
+                              {operation.description}
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-right font-bold text-gray-900">
+                            {formatCurrency(operation.amount_lei)}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
                 
                 {typeOperations.pagination.has_more && !showAllOperations && (
-                  <div className="mt-4 flex justify-center">
+                  <div className="mt-6 flex justify-center">
                     <Button
                       variant="outline"
                       onClick={() => fetchTypeOperations(
@@ -470,13 +585,14 @@ export default function ReportsPage() {
                         typeOperations.pagination.limit,
                         typeOperations.pagination.offset + typeOperations.pagination.limit
                       )}
+                      className="border-gray-300 hover:bg-gray-50"
                     >
                       Load More
                     </Button>
                   </div>
                 )}
                 
-                <div className="mt-4 flex justify-end">
+                <div className="mt-6 flex justify-end">
                   <Button
                     variant="outline"
                     onClick={() => {
@@ -484,6 +600,7 @@ export default function ReportsPage() {
                       setTypeOperations(null)
                       setShowAllOperations(false)
                     }}
+                    className="border-gray-300 hover:bg-gray-50"
                   >
                     Close
                   </Button>
@@ -495,11 +612,11 @@ export default function ReportsPage() {
       )}
 
       {!reportData && !loading && selectedMonth && (
-        <Card>
-          <CardContent className="text-center py-12">
-            <FileText className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-            <h3 className="text-lg font-medium mb-2">No Data Available</h3>
-            <p className="text-muted-foreground">
+        <Card className="border-0 shadow-lg">
+          <CardContent className="text-center py-16">
+            <FileText className="h-16 w-16 mx-auto text-gray-300 mb-6" />
+            <h3 className="text-xl font-semibold text-gray-700 mb-2">No Data Available</h3>
+            <p className="text-gray-500">
               No financial data found for the selected month.
             </p>
           </CardContent>
