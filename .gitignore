@@ -178,3 +178,42 @@ PDF_examples/
 uploads/
 temp/
 *.pdf
+
+# Operations Matching System
+config/operations_matching.yaml
+config/learned_patterns.json
+config/matcher_cache/
+
+# Test and demo databases
+test_*.db
+test_*.sqlite
+demo_*.db
+demo_*.sqlite
+
+# Operations matching cache files
+*.cache
+matcher_cache/
+
+# Temporary classification files
+classification_results/
+auto_assignment_logs/
+
+# Backup files
+*.bak
+*.backup
+*.old
+
+# Local configuration overrides
+local_config.yaml
+local_settings.py
+config/operations_matching.yaml
+config/learned_patterns.json
+config/matcher_cache/
+
+# Performance profiling
+*.prof
+*.profile
+
+# Memory dumps
+*.dump
+*.dmp
