@@ -210,6 +210,8 @@ config/operations_matching.yaml
 config/learned_patterns.json
 config/matcher_cache/
 
+.cursor/rules/
+
 # Performance profiling
 *.prof
 *.profile
