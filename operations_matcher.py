@@ -62,8 +62,7 @@ class OperationsMatcher:
         
         # Convert to uppercase and remove extra whitespace
         normalized = description.upper().strip()
-        # Remove special characters and normalize spaces
-        normalized = re.sub(r'[^\w\s]', ' ', normalized)
+        # Normalize spaces but preserve dots, hyphens, and other important characters
         normalized = re.sub(r'\s+', ' ', normalized)
         return normalized.strip()
     
@@ -77,20 +76,23 @@ class OperationsMatcher:
         
         exact_matches = self.config.get('exact_matches', {})
         
-        # Direct match
-        if normalized_desc in exact_matches:
-            result = MatchResult(
-                type_name=exact_matches[normalized_desc],
-                confidence=100.0,
-                method='exact',
-                details={'matched_description': normalized_desc}
-            )
-            self.exact_match_cache[normalized_desc] = result
-            return result
+        # Direct match - normalize config keys for comparison
+        for pattern, type_name in exact_matches.items():
+            normalized_pattern = self._normalize_description(pattern)
+            if normalized_desc == normalized_pattern:
+                result = MatchResult(
+                    type_name=type_name,
+                    confidence=100.0,
+                    method='exact',
+                    details={'matched_description': normalized_desc}
+                )
+                self.exact_match_cache[normalized_desc] = result
+                return result
         
         # Check for partial matches (exact substring)
         for pattern, type_name in exact_matches.items():
-            if pattern in normalized_desc or normalized_desc in pattern:
+            normalized_pattern = self._normalize_description(pattern)
+            if normalized_pattern in normalized_desc or normalized_desc in normalized_pattern:
                 result = MatchResult(
                     type_name=type_name,
                     confidence=95.0,

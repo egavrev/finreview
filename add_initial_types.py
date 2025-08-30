@@ -24,6 +24,7 @@ def main():
             ("Education", "Education and training costs"),
             ("Travel", "Travel and vacation expenses"),
             ("Investment", "Investment and savings"),
+            ("Transfer", "Bank transfers and card operations"),
             ("Other", "Other miscellaneous expenses"),
         ]
         

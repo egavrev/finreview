@@ -26,6 +26,7 @@ exact_matches:
   "MARKET PANCARLEAN": "Food"
   "MAGAZIN NR 1": "Food"
   "LINELLA 112": "Food"
+  "Chateau Grup SRL": "Food"
   #Education
   "LIBRARIUS": "Education"
   "CRAFTI Moscova": "Education"
@@ -53,11 +54,16 @@ exact_matches:
   "Galdracom SRL": "Shopping"
   "Barbaris butic Soiuz": "Shopping"
   "CC SOIUZ BUT 325": "Shopping"
+  "Traihili Tamara II": "Shopping"
+  "CHANCE": "Shopping"
 
   
   # Services
   "EA STUDIO FIT SRL": "Entertainment"
   "PRACTIC-ASIG S.R.L.": "Bills"
+  "CUZNETOV AND C II": "Housing"
+  "BAVIUS PRIM SOIUZ": "Shopping"
+  "VASCONI SOIUZ": "Shopping"
   
   
   # Utilities and bills
@@ -72,7 +78,7 @@ exact_matches:
 keyword_matches:
   # Food and grocery keywords
   food:
-    keywords: ["AGRO", "MARKET", "FRANZELUTA", "FOODMART", "MAGAZIN", "SELF", "CAFE", "PIZZA", "FOOD", "GROCERY", "SUPERMARKET","LINELLA","GAINUSA","OCEAN FISH","EXTRAORDINARIUS","PRODIMIT","BAKERY","JLC","LATTESE","FARM.FAMILIEI"]
+    keywords: ["AGRO", "INTERFOBOS", "AGROBAZAR", "MARKET", "FRANZELUTA", "FOODMART", "MAGAZIN", "SELF", "CAFE", "PIZZA", "FOOD", "GROCERY", "SUPERMARKET","LINELLA","GAINUSA","OCEAN FISH","EXTRAORDINARIUS","PRODIMIT","BAKERY","JLC","LATTESE","FARM.FAMILIEI"]
     weight: 90
     type: "Food"
   
@@ -90,38 +96,38 @@ keyword_matches:
 
   #restaurant
   restaurant:
-    keywords: ["PAPA JERRY", "CAFE"]
+    keywords: ["PAPA JERRY", "CAFE","CIORICI IULIAN","ART TWIST"]
     weight: 85
     type: "Restaurant"
   
   # Transport keywords
   transport:
-    keywords: ["GAS", "PETROL", "FUEL", "TAXI", "UBER", "TRANSPORT", "BUS", "TRAIN", "PRACTIC-ASIG","DAAC HERMES"]
+    keywords: ["GAS", "PETROL", "FUEL", "TAXI", "UBER", "TRANSPORT", "BUS", "TRAIN", "PRACTIC-ASIG","DAAC HERMES","SAC 010","Olvic"]
     weight: 85
     type: "Transport"
   
   # Shopping keywords
   shopping:
-    keywords: ["SHOP", "MAGAZIN", "STORE", "RETAIL", "CLOTHING", "SHOES", "ELECTRONICS", "ZOLUSCA","VITESSE","BARBARIS","KAWAICAT","LIALMAX"]
+    keywords: ["SHOP", "MAGAZIN", "STORE", "RETAIL", "CLOTHING", "SHOES", "ELECTRONICS", "ZOLUSCA","VITESSE","BARBARIS","KAWAICAT","LIALMAX","CHANCE"]
     weight: 85
     type: "Shopping"
   
   # Bills and utilities
   bills:
-    keywords: ["BILL", "UTILITY", "ELECTRICITY", "WATER", "GAS", "INTERNET", "PHONE", "MOBILE", "SERVICE", "SUBSCRIPTION","PRACTIC-ASIG"]
-    weight: 90
+    keywords: ["BILL", "UTILITY", "ELECTRICITY", "WATER", "GAS", "INTERNET", "PHONE", "MOBILE", "SERVICE", "SUBSCRIPTION"]
     type: "Bills"
+    weight: 85
   
   # Education
   education:
     keywords: ["SCHOOL", "UNIVERSITY", "COURSE", "TRAINING", "EDUCATION", "LEARNING", "BOOKS", "TUTORIAL", "LIBRARIUS","CRAFTI"]
-    weight: 80
+    weight: 85
     type: "Education"
   #construction 
-  construction:
+  housing:
     keywords: ["SUPRATEN", "CONTRACT", "CONTRACTOR", "CONSTRUCTION", "CONSTRUCTION", "CONSTRUCTION"]
     weight: 85
-    type: "Construction"
+    type: "Housing"
 
 
 

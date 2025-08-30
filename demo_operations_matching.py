@@ -237,9 +237,15 @@ def demo_auto_classification_potential():
         
         print()
         print("📈 POTENTIAL IMPROVEMENT:")
-        print(f"   • Operations that could be auto-assigned: {potential_auto} ({(potential_auto/total_ops*100):.1f}%)")
-        print(f"   • Operations needing review: {potential_review} ({(potential_review/total_ops*100):.1f}%)")
-        print(f"   • Total potential improvement: {potential_auto + potential_review} ({((potential_auto + potential_review)/total_ops*100):.1f}%)")
+        if total_ops > 0:
+            print(f"   • Operations that could be auto-assigned: {potential_auto} ({(potential_auto/total_ops*100):.1f}%)")
+            print(f"   • Operations needing review: {potential_review} ({(potential_review/total_ops*100):.1f}%)")
+            print(f"   • Total potential improvement: {potential_auto + potential_review} ({((potential_auto + potential_review)/total_ops*100):.1f}%)")
+        else:
+            print(f"   • Operations that could be auto-assigned: {potential_auto} (100.0%)")
+            print(f"   • Operations needing review: {potential_review} (0.0%)")
+            print(f"   • Total potential improvement: {potential_auto + potential_review} (100.0%)")
+            print("   🎉 All operations are already classified!")
 
 
 def update_all_high_confidence_operations():
