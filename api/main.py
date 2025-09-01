@@ -1,4 +1,4 @@
-from fastapi import FastAPI, UploadFile, File, HTTPException, Depends
+from fastapi import FastAPI, UploadFile, File, HTTPException, Depends, Form
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from sqlmodel import Session, select
@@ -16,10 +16,10 @@ sys.path.append(str(Path(__file__).parent.parent))
 
 from sql_utils import (
     get_engine, init_db, PDF, OperationRow, OperationType, process_and_store, 
-    get_pdf_by_path, get_operations_for_pdf, create_operation_type, get_operation_types,
+    get_pdf_by_path, get_operations_for_pdf, create_operation_type, create_manual_operation, get_operation_types,
     get_operation_type_by_id, update_operation_type, delete_operation_type,
     assign_operation_type, get_operations_by_type, get_operations_with_types,
-    get_operations_with_null_types, get_available_months, get_monthly_report_data, get_operations_by_type_for_month,
+    get_operations_with_null_types, get_operations_by_month, delete_operation, get_available_months, get_monthly_report_data, get_operations_by_type_for_month,
     get_duplicate_operations
 )
 from pdf_processor import PDFSummary, Operation
@@ -210,6 +210,113 @@ async def list_operations(
         }
         for op in operations
     ]
+
+@app.post("/operations/manual")
+async def create_manual_operation_endpoint(
+    transaction_date: str = Form(...),
+    type_id: str = Form(...),  # Accept as string first
+    amount_lei: str = Form(...),  # Accept as string first
+    description: Optional[str] = Form(None),
+    processed_date: Optional[str] = Form(None),
+    session: Session = Depends(get_session)
+):
+    """Create a manual operation"""
+    try:
+        # Convert string parameters to proper types
+        try:
+            type_id_int = int(type_id)
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid type_id: must be a number")
+        
+        try:
+            amount_float = float(amount_lei)
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid amount: must be a number")
+        
+        # Validate amount (maximum 999999.99)
+        if amount_float > 999999.99:
+            raise HTTPException(status_code=400, detail="Amount cannot exceed 999999.99 MDL")
+        
+        if amount_float <= 0:
+            raise HTTPException(status_code=400, detail="Amount must be greater than 0")
+        
+        # Validate type_id exists
+        operation_type = get_operation_type_by_id(session, type_id_int)
+        if not operation_type:
+            raise HTTPException(status_code=404, detail="Operation type not found")
+        
+        # Create the manual operation
+        operation = create_manual_operation(
+            session=session,
+            transaction_date=transaction_date,
+            type_id=type_id_int,
+            amount_lei=amount_float,
+            description=description,
+            processed_date=processed_date
+        )
+        
+        return {
+            "id": operation.id,
+            "pdf_id": operation.pdf_id,
+            "type_id": operation.type_id,
+            "transaction_date": operation.transaction_date,
+            "processed_date": operation.processed_date,
+            "description": operation.description,
+            "amount_lei": operation.amount_lei,
+            "operation_hash": operation.operation_hash,
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error creating manual operation: {str(e)}")
+
+
+@app.get("/operations/by-month/{year}/{month}")
+async def get_operations_by_month_endpoint(
+    year: int,
+    month: int,
+    session: Session = Depends(get_session)
+):
+    """Get all operations for a specific month"""
+    try:
+        operations_with_types = get_operations_by_month(session, year, month)
+        
+        result = []
+        for operation, operation_type in operations_with_types:
+            result.append({
+                "id": operation.id,
+                "pdf_id": operation.pdf_id,
+                "type_id": operation.type_id,
+                "type_name": operation_type.name if operation_type else None,
+                "transaction_date": operation.transaction_date,
+                "processed_date": operation.processed_date,
+                "description": operation.description,
+                "amount_lei": operation.amount_lei,
+                "is_manual": operation.pdf_id is None,
+            })
+        
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error fetching operations: {str(e)}")
+
+
+@app.delete("/operations/{operation_id}")
+async def delete_operation_endpoint(
+    operation_id: int,
+    session: Session = Depends(get_session)
+):
+    """Delete an operation by ID"""
+    try:
+        success = delete_operation(session, operation_id)
+        if success:
+            return {"success": True, "message": "Operation deleted successfully"}
+        else:
+            raise HTTPException(status_code=404, detail="Operation not found")
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error deleting operation: {str(e)}")
+
 
 @app.get("/statistics")
 async def get_statistics(session: Session = Depends(get_session)):

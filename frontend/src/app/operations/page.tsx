@@ -1,12 +1,12 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Activity, Plus, Edit } from 'lucide-react'
+import { Activity, Plus, Edit, Trash2, Calendar } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Select } from '@/components/ui/select'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Label } from '@/components/ui/label'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { API_ENDPOINTS } from '@/lib/api'
@@ -39,6 +39,21 @@ export default function OperationsPage() {
   const [newTypeName, setNewTypeName] = useState('')
   const [newTypeDescription, setNewTypeDescription] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
+  
+  // Manual operation states
+  const [manualOperationDialogOpen, setManualOperationDialogOpen] = useState(false)
+  const [manualDate, setManualDate] = useState('')
+  const [manualTime, setManualTime] = useState('')
+  const [manualTypeId, setManualTypeId] = useState('')
+  const [manualAmount, setManualAmount] = useState('')
+  const [manualDescription, setManualDescription] = useState('')
+  
+  // Monthly operations states
+  const [monthlyOperations, setMonthlyOperations] = useState<any[]>([])
+  const [selectedMonth, setSelectedMonth] = useState('')
+  const [monthlyOperationsLoading, setMonthlyOperationsLoading] = useState(false)
+  const [deleteConfirmDialogOpen, setDeleteConfirmDialogOpen] = useState(false)
+  const [operationToDelete, setOperationToDelete] = useState<any>(null)
 
   useEffect(() => {
     fetchOperations()
@@ -129,10 +144,145 @@ export default function OperationsPage() {
     }
   }
 
+  const handleCreateManualOperation = async () => {
+    if (!manualDate || !manualTime || !manualTypeId || !manualAmount) return
+
+    setIsSubmitting(true)
+    try {
+      // Combine date and time and ensure proper format
+      const transactionDate = `${manualDate}T${manualTime}:00`
+      
+      // Validate amount format (max 999999.99)
+      const amount = parseFloat(manualAmount)
+      if (isNaN(amount) || amount <= 0 || amount > 999999.99) {
+        alert('Please enter a valid amount between 0.01 and 999999.99 MDL')
+        setIsSubmitting(false)
+        return
+      }
+
+      // Create form data
+      const formData = new URLSearchParams()
+      formData.append('transaction_date', transactionDate)
+      formData.append('type_id', manualTypeId)
+      formData.append('amount_lei', amount.toString())
+      if (manualDescription) {
+        formData.append('description', manualDescription)
+      }
+
+
+
+      const response = await fetch(API_ENDPOINTS.CREATE_MANUAL_OPERATION, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+        },
+        body: formData.toString(),
+      })
+
+      if (response.ok) {
+        const newOperation = await response.json()
+        setManualOperationDialogOpen(false)
+        // Reset form
+        setManualDate('')
+        setManualTime('')
+        setManualTypeId('')
+        setManualAmount('')
+        setManualDescription('')
+        
+        // Refresh operations list to show the new manual operation
+        fetchOperations()
+      } else {
+        try {
+          const errorData = await response.json()
+          if (response.status === 422) {
+            // Handle validation errors
+            if (errorData.detail && Array.isArray(errorData.detail)) {
+              const errorMessages = errorData.detail.map((err: any) => 
+                `${err.loc?.join('.')}: ${err.msg}`
+              ).join(', ')
+              alert(`Validation error: ${errorMessages}`)
+            } else {
+              alert(`Validation error: ${errorData.detail || 'Invalid data format'}`)
+            }
+          } else {
+            alert(`Error creating manual operation: ${errorData.detail || 'Unknown error'}`)
+          }
+        } catch (parseError) {
+          alert(`Error creating manual operation: ${response.statusText || 'Unknown error'}`)
+        }
+      }
+    } catch (error) {
+      console.error('Error creating manual operation:', error)
+      alert('Error creating manual operation. Please try again.')
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
   const openAssignDialog = (operation: Operation) => {
     setSelectedOperation(operation)
     setSelectedTypeId('')
     setAssignDialogOpen(true)
+  }
+
+  const fetchMonthlyOperations = async () => {
+    if (!selectedMonth) return
+    
+    setMonthlyOperationsLoading(true)
+    try {
+      const [year, month] = selectedMonth.split('-').map(Number)
+      console.log('Fetching operations for:', { year, month, selectedMonth })
+      
+      const response = await fetch(API_ENDPOINTS.OPERATIONS_BY_MONTH(year, month))
+      console.log('Response status:', response.status)
+      
+      if (response.ok) {
+        const data = await response.json()
+        console.log('Received operations:', data)
+        setMonthlyOperations(data)
+      } else {
+        console.error('Error fetching monthly operations:', response.statusText)
+        const errorText = await response.text()
+        console.error('Error response:', errorText)
+      }
+    } catch (error) {
+      console.error('Error fetching monthly operations:', error)
+    } finally {
+      setMonthlyOperationsLoading(false)
+    }
+  }
+
+  const handleDeleteOperation = async (operation: any) => {
+    setOperationToDelete(operation)
+    setDeleteConfirmDialogOpen(true)
+  }
+
+  const confirmDeleteOperation = async () => {
+    if (!operationToDelete) return
+
+    setIsSubmitting(true)
+    try {
+      const response = await fetch(API_ENDPOINTS.DELETE_OPERATION(operationToDelete.id), {
+        method: 'DELETE',
+      })
+
+      if (response.ok) {
+        setDeleteConfirmDialogOpen(false)
+        setOperationToDelete(null)
+        // Refresh the monthly operations list
+        fetchMonthlyOperations()
+        // Also refresh the null types operations list
+        fetchOperations()
+      } else {
+        const errorData = await response.json()
+        alert(`Error deleting operation: ${errorData.detail || 'Unknown error'}`)
+      }
+    } catch (error) {
+      console.error('Error deleting operation:', error)
+      alert('Error deleting operation. Please try again.')
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   const formatDate = (dateString: string | null) => {
@@ -227,6 +377,140 @@ export default function OperationsPage() {
         </CardContent>
       </Card>
 
+      {/* Manual Operations Section */}
+      <Card className="mt-8">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Plus className="h-5 w-5" />
+            Add Manual Operation
+          </CardTitle>
+          <CardDescription>
+            Add operations manually that are not from PDF files. These will be included in all reports.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Button
+            onClick={() => setManualOperationDialogOpen(true)}
+            className="flex items-center gap-2"
+          >
+            <Plus className="h-4 w-4" />
+            Add Manual Operation
+          </Button>
+        </CardContent>
+      </Card>
+
+      {/* Monthly Operations Section */}
+      <Card className="mt-8">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Calendar className="h-5 w-5" />
+            Monthly Operations
+          </CardTitle>
+          <CardDescription>
+            View and manage operations for a specific month. You can delete operations from here.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex gap-4 mb-6">
+            <div className="flex-1">
+              <Label htmlFor="month-select">Select Month</Label>
+              <Input
+                id="month-select"
+                type="month"
+                value={selectedMonth}
+                onChange={(e) => setSelectedMonth(e.target.value)}
+                className="mt-1"
+              />
+            </div>
+            <div className="flex items-end">
+              <Button
+                onClick={fetchMonthlyOperations}
+                disabled={!selectedMonth || monthlyOperationsLoading}
+                className="flex items-center gap-2"
+              >
+                {monthlyOperationsLoading ? (
+                  <Activity className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Calendar className="h-4 w-4" />
+                )}
+                {monthlyOperationsLoading ? 'Loading...' : 'Load Operations'}
+              </Button>
+            </div>
+          </div>
+
+          {monthlyOperations.length > 0 && (
+            <div className="space-y-4">
+              <div className="flex justify-between items-center">
+                <h3 className="text-lg font-medium">
+                  Operations for {selectedMonth} ({monthlyOperations.length})
+                </h3>
+              </div>
+              
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Date</TableHead>
+                    <TableHead>Type</TableHead>
+                    <TableHead>Description</TableHead>
+                    <TableHead>Amount</TableHead>
+                    <TableHead>Source</TableHead>
+                    <TableHead>Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {monthlyOperations.map((operation) => (
+                    <TableRow key={operation.id}>
+                      <TableCell>
+                        {formatDate(operation.transaction_date)}
+                      </TableCell>
+                      <TableCell>
+                        {operation.type_name || 'No Type'}
+                      </TableCell>
+                      <TableCell className="max-w-md truncate">
+                        {operation.description || '-'}
+                      </TableCell>
+                      <TableCell>
+                        {formatAmount(operation.amount_lei)}
+                      </TableCell>
+                      <TableCell>
+                        <span className={`px-2 py-1 rounded-full text-xs ${
+                          operation.is_manual 
+                            ? 'bg-blue-100 text-blue-800' 
+                            : 'bg-green-100 text-green-800'
+                        }`}>
+                          {operation.is_manual ? 'Manual' : 'PDF'}
+                        </span>
+                      </TableCell>
+                      <TableCell>
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          onClick={() => handleDeleteOperation(operation)}
+                          className="flex items-center gap-2"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                          Delete
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+
+          {selectedMonth && monthlyOperations.length === 0 && !monthlyOperationsLoading && (
+            <div className="text-center py-8">
+              <Calendar className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+              <h3 className="text-lg font-medium mb-2">No Operations Found</h3>
+              <p className="text-muted-foreground">
+                No operations found for {selectedMonth}.
+              </p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
       {/* Assign Type Dialog */}
       <Dialog open={assignDialogOpen} onOpenChange={setAssignDialogOpen}>
         <DialogContent>
@@ -240,17 +524,17 @@ export default function OperationsPage() {
           <div className="space-y-4">
             <div>
               <Label htmlFor="type-select">Select Type</Label>
-              <Select
-                id="type-select"
-                value={selectedTypeId}
-                onChange={(e) => setSelectedTypeId(e.target.value)}
-              >
-                <option value="">Choose a type...</option>
-                {operationTypes.map((type) => (
-                  <option key={type.id} value={type.id}>
-                    {type.name}
-                  </option>
-                ))}
+              <Select value={selectedTypeId} onValueChange={setSelectedTypeId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Choose a type..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {operationTypes.map((type) => (
+                    <SelectItem key={type.id} value={type.id.toString()}>
+                      {type.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
               </Select>
             </div>
 
@@ -333,6 +617,142 @@ export default function OperationsPage() {
               disabled={!newTypeName.trim() || isSubmitting}
             >
               {isSubmitting ? 'Creating...' : 'Create Type'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Manual Operation Dialog */}
+      <Dialog open={manualOperationDialogOpen} onOpenChange={setManualOperationDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add Manual Operation</DialogTitle>
+            <DialogDescription>
+              Add a new operation manually. This will be stored without a PDF file and included in all reports.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="manual-date">Date</Label>
+                <Input
+                  id="manual-date"
+                  type="date"
+                  value={manualDate}
+                  onChange={(e) => setManualDate(e.target.value)}
+                  required
+                />
+              </div>
+              <div>
+                <Label htmlFor="manual-time">Time</Label>
+                <Input
+                  id="manual-time"
+                  type="time"
+                  value={manualTime}
+                  onChange={(e) => setManualTime(e.target.value)}
+                  required
+                />
+              </div>
+            </div>
+
+            <div>
+              <Label htmlFor="manual-type">Operation Type</Label>
+              <Select value={manualTypeId} onValueChange={setManualTypeId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Choose a type..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {operationTypes.map((type) => (
+                    <SelectItem key={type.id} value={type.id.toString()}>
+                      {type.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <Label htmlFor="manual-amount">Amount (MDL)</Label>
+              <Input
+                id="manual-amount"
+                type="number"
+                step="0.01"
+                min="0.01"
+                max="999999.99"
+                value={manualAmount}
+                onChange={(e) => setManualAmount(e.target.value)}
+                placeholder="0.00"
+                required
+              />
+              <p className="text-sm text-muted-foreground mt-1">
+                Maximum amount: 999,999.99 MDL
+              </p>
+            </div>
+
+            <div>
+              <Label htmlFor="manual-description">Description (Optional)</Label>
+              <Input
+                id="manual-description"
+                value={manualDescription}
+                onChange={(e) => setManualDescription(e.target.value)}
+                placeholder="Brief description of the operation"
+              />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setManualOperationDialogOpen(false)}
+              disabled={isSubmitting}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleCreateManualOperation}
+              disabled={!manualDate || !manualTime || !manualTypeId || !manualAmount || isSubmitting}
+            >
+              {isSubmitting ? 'Creating...' : 'Create Operation'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={deleteConfirmDialogOpen} onOpenChange={setDeleteConfirmDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Confirm Delete Operation</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete this operation? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          
+          {operationToDelete && (
+            <div className="space-y-2 p-4 bg-muted rounded-lg">
+              <p><strong>Date:</strong> {formatDate(operationToDelete.transaction_date)}</p>
+              <p><strong>Type:</strong> {operationToDelete.type_name || 'No Type'}</p>
+              <p><strong>Description:</strong> {operationToDelete.description || '-'}</p>
+              <p><strong>Amount:</strong> {formatAmount(operationToDelete.amount_lei)}</p>
+              <p><strong>Source:</strong> {operationToDelete.is_manual ? 'Manual' : 'PDF'}</p>
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setDeleteConfirmDialogOpen(false)}
+              disabled={isSubmitting}
+            >
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={confirmDeleteOperation}
+              disabled={isSubmitting}
+            >
+              {isSubmitting ? 'Deleting...' : 'Delete Operation'}
             </Button>
           </DialogFooter>
         </DialogContent>

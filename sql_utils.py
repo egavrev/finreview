@@ -28,7 +28,7 @@ class OperationType(SQLModel, table=True):
 
 class OperationRow(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
-    pdf_id: int = Field(foreign_key="pdf.id")
+    pdf_id: Optional[int] = Field(default=None, foreign_key="pdf.id")  # Null for manual operations
     type_id: Optional[int] = Field(default=None, foreign_key="operationtype.id")
     transaction_date: Optional[str] = None
     processed_date: Optional[str] = None
@@ -340,6 +340,41 @@ def create_operation_type(session: Session, name: str, description: Optional[str
     return operation_type
 
 
+def create_manual_operation(
+    session: Session,
+    transaction_date: str,
+    type_id: int,
+    amount_lei: float,
+    description: Optional[str] = None,
+    processed_date: Optional[str] = None
+) -> OperationRow:
+    """Create a manual operation (with null PDF ID)"""
+    # Create a temporary Operation object to generate hash
+    temp_operation = Operation(
+        transaction_date=transaction_date,
+        processed_date=processed_date or transaction_date,
+        description=description or f"Manual operation - {amount_lei} MDL",
+        amount_lei=amount_lei
+    )
+    operation_hash = generate_operation_hash(temp_operation)
+    
+    # Create the operation row with null PDF ID (indicating manual entry)
+    operation = OperationRow(
+        pdf_id=None,  # Null PDF ID indicates manual operation
+        type_id=type_id,
+        transaction_date=transaction_date,
+        processed_date=processed_date or transaction_date,
+        description=description or f"Manual operation - {amount_lei} MDL",
+        amount_lei=amount_lei,
+        operation_hash=operation_hash
+    )
+    
+    session.add(operation)
+    session.commit()
+    session.refresh(operation)
+    return operation
+
+
 def get_operation_types(session: Session) -> List[OperationType]:
     """Get all operation types"""
     return list(session.exec(select(OperationType).order_by(OperationType.name)))
@@ -416,6 +451,41 @@ def get_operations_with_null_types(session: Session, pdf_id: Optional[int] = Non
         query = query.where(OperationRow.pdf_id == pdf_id)
     query = query.order_by(OperationRow.transaction_date)
     return list(session.exec(query))
+
+
+def get_operations_by_month(session: Session, year: int, month: int) -> List[Tuple[OperationRow, Optional[OperationType]]]:
+    """Get all operations for a specific month with their types"""
+    from datetime import datetime
+    import calendar
+    
+    # Get the first and last day of the month
+    first_day = datetime(year, month, 1)
+    last_day = datetime(year, month, calendar.monthrange(year, month)[1], 23, 59, 59)
+    
+    # Format dates for comparison with time
+    first_day_str = first_day.strftime('%Y-%m-%dT00:00:00')
+    last_day_str = last_day.strftime('%Y-%m-%dT23:59:59')
+    
+    # Query operations within the month range
+    query = select(OperationRow, OperationType).outerjoin(
+        OperationType, OperationRow.type_id == OperationType.id
+    ).where(
+        OperationRow.transaction_date >= first_day_str
+    ).where(
+        OperationRow.transaction_date <= last_day_str
+    ).order_by(OperationRow.transaction_date.desc())
+    
+    return list(session.exec(query))
+
+
+def delete_operation(session: Session, operation_id: int) -> bool:
+    """Delete an operation by ID"""
+    operation = session.exec(select(OperationRow).where(OperationRow.id == operation_id)).first()
+    if operation:
+        session.delete(operation)
+        session.commit()
+        return True
+    return False
 
 
 def process_and_store(
