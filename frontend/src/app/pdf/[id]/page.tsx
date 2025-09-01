@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { API_ENDPOINTS } from '@/lib/api'
 
 interface PDF {
   id: number
@@ -42,7 +43,7 @@ export default function PDFDetailsPage({ params }: { params: { id: string } }) {
 
   const fetchPDFDetails = async () => {
     try {
-      const response = await fetch(`http://localhost:8000/pdfs/${params.id}`)
+      const response = await fetch(API_ENDPOINTS.PDF_BY_ID(Number(params.id)))
       if (response.ok) {
         const data = await response.json()
         setPdfDetails(data)

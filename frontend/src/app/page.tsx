@@ -5,6 +5,7 @@ import { FileText, BarChart3, DollarSign, TrendingUp } from 'lucide-react'
 import Link from 'next/link'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { API_ENDPOINTS } from '@/lib/api'
 
 interface Statistics {
   total_pdfs: number
@@ -23,9 +24,8 @@ interface PDF {
   sold_initial: number | null
   sold_final: number | null
   created_at: string | null
+  operations_count: number
 }
-
-const API_BASE = 'http://localhost:8000'
 
 export default function Dashboard() {
   const [statistics, setStatistics] = useState<Statistics | null>(null)
@@ -38,7 +38,7 @@ export default function Dashboard() {
 
   const fetchStatistics = async () => {
     try {
-      const response = await fetch(`${API_BASE}/statistics`)
+      const response = await fetch(API_ENDPOINTS.STATISTICS)
       const data = await response.json()
       setStatistics(data)
     } catch (error) {
@@ -48,7 +48,7 @@ export default function Dashboard() {
 
   const fetchPDFs = async () => {
     try {
-      const response = await fetch(`${API_BASE}/pdfs`)
+      const response = await fetch(API_ENDPOINTS.PDFS)
       const data = await response.json()
       setPdfs(data)
     } catch (error) {
@@ -135,6 +135,7 @@ export default function Dashboard() {
                 <TableHead>ID</TableHead>
                 <TableHead>Client</TableHead>
                 <TableHead>Account</TableHead>
+                <TableHead>Operations</TableHead>
                 <TableHead>Total Iesiri</TableHead>
                 <TableHead>Initial Balance</TableHead>
                 <TableHead>Final Balance</TableHead>
@@ -147,6 +148,11 @@ export default function Dashboard() {
                   <TableCell>{pdf.id}</TableCell>
                   <TableCell>{pdf.client_name || 'N/A'}</TableCell>
                   <TableCell>{pdf.account_number || 'N/A'}</TableCell>
+                  <TableCell>
+                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                      {pdf.operations_count}
+                    </span>
+                  </TableCell>
                   <TableCell>{formatCurrency(pdf.total_iesiri)}</TableCell>
                   <TableCell>{formatCurrency(pdf.sold_initial)}</TableCell>
                   <TableCell>{formatCurrency(pdf.sold_final)}</TableCell>

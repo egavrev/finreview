@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input'
 import { Select } from '@/components/ui/select'
 import { Label } from '@/components/ui/label'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { API_ENDPOINTS } from '@/lib/api'
 
 interface Operation {
   id: number
@@ -46,7 +47,7 @@ export default function OperationsPage() {
 
   const fetchOperations = async () => {
     try {
-      const response = await fetch('http://localhost:8000/operations/null-types')
+      const response = await fetch(API_ENDPOINTS.OPERATIONS_NULL_TYPES)
       if (response.ok) {
         const data = await response.json()
         setOperations(data)
@@ -60,7 +61,7 @@ export default function OperationsPage() {
 
   const fetchOperationTypes = async () => {
     try {
-      const response = await fetch('http://localhost:8000/operation-types')
+      const response = await fetch(API_ENDPOINTS.OPERATION_TYPES)
       if (response.ok) {
         const data = await response.json()
         setOperationTypes(data)
@@ -75,7 +76,7 @@ export default function OperationsPage() {
 
     setIsSubmitting(true)
     try {
-      const response = await fetch(`http://localhost:8000/operations/${selectedOperation.id}/assign-type`, {
+      const response = await fetch(API_ENDPOINTS.ASSIGN_OPERATION_TYPE(selectedOperation.id), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded',
@@ -101,7 +102,7 @@ export default function OperationsPage() {
 
     setIsSubmitting(true)
     try {
-      const response = await fetch('http://localhost:8000/operation-types', {
+      const response = await fetch(API_ENDPOINTS.OPERATION_TYPES, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded',

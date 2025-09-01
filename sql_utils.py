@@ -1,5 +1,6 @@
 from pathlib import Path
 from typing import Iterable, List, Optional, Tuple
+import hashlib
 
 from sqlmodel import SQLModel, Field, create_engine, Session, select
 from sqlalchemy import event, delete
@@ -33,6 +34,7 @@ class OperationRow(SQLModel, table=True):
     processed_date: Optional[str] = None
     description: Optional[str] = None
     amount_lei: Optional[float] = None
+    operation_hash: Optional[str] = Field(default=None, index=True)  # Hash for deduplication
 
 
 def get_engine(db_path: str | Path):
@@ -52,6 +54,88 @@ def get_engine(db_path: str | Path):
 
 def init_db(engine) -> None:
     SQLModel.metadata.create_all(engine)
+
+
+def generate_operation_hash(operation: Operation) -> str:
+    """
+    Generate a hash for an operation based on its key fields.
+    This creates a unique identifier for deduplication purposes.
+    Note: Excludes processed_date as it can vary between different PDF files for the same transaction.
+    """
+    # Create a string representation of the operation's key fields
+    # Exclude processed_date as it can vary between different PDF files
+    hash_string = f"{operation.transaction_date}|{operation.description}|{operation.amount_lei}"
+    
+    # Generate SHA-256 hash
+    return hashlib.sha256(hash_string.encode('utf-8')).hexdigest()
+
+
+def check_operation_exists_by_hash(session: Session, operation_hash: str) -> Optional[OperationRow]:
+    """
+    Check if an operation with the given hash already exists in the database.
+    
+    Args:
+        session: Database session
+        operation_hash: Hash of the operation to check
+        
+    Returns:
+        OperationRow if found, None otherwise
+    """
+    return session.exec(select(OperationRow).where(OperationRow.operation_hash == operation_hash)).first()
+
+
+def store_operations_with_deduplication(
+    session: Session,
+    pdf_id: int,
+    operations: Iterable[Operation],
+    *,
+    replace_existing: bool = True,
+    skip_duplicates: bool = True,
+) -> Tuple[int, int]:
+    """
+    Store operations with hash-based deduplication.
+    
+    Args:
+        session: Database session
+        pdf_id: PDF ID
+        operations: Operations to store
+        replace_existing: Whether to replace existing operations for this PDF
+        skip_duplicates: Whether to skip operations that already exist (by hash)
+        
+    Returns:
+        Tuple of (stored_count, skipped_count)
+    """
+    if replace_existing:
+        session.exec(delete(OperationRow).where(OperationRow.pdf_id == pdf_id))
+
+    stored_count = 0
+    skipped_count = 0
+    
+    for op in operations:
+        # Generate hash for the operation
+        operation_hash = generate_operation_hash(op)
+        
+        # Check if operation already exists (if skip_duplicates is True)
+        if skip_duplicates:
+            existing_operation = check_operation_exists_by_hash(session, operation_hash)
+            if existing_operation:
+                skipped_count += 1
+                continue
+        
+        # Create new operation row
+        row = OperationRow(
+            pdf_id=pdf_id,
+            transaction_date=op.transaction_date,
+            processed_date=op.processed_date,
+            description=op.description,
+            amount_lei=op.amount_lei,
+            operation_hash=operation_hash,
+        )
+        session.add(row)
+        stored_count += 1
+    
+    session.commit()
+    return stored_count, skipped_count
 
 
 def store_pdf_summary(
@@ -108,6 +192,135 @@ def store_operations(
         count += 1
     session.commit()
     return count
+
+
+def store_operations_with_deduplication(
+    session: Session,
+    pdf_id: int,
+    operations: Iterable[Operation],
+    *,
+    replace_existing: bool = True,
+    skip_duplicates: bool = True,
+) -> Tuple[int, int]:
+    """
+    Store operations with hash-based deduplication.
+    
+    Args:
+        session: Database session
+        pdf_id: PDF ID
+        operations: Operations to store
+        replace_existing: Whether to replace existing operations for this PDF
+        skip_duplicates: Whether to skip operations that already exist (by hash)
+        
+    Returns:
+        Tuple of (stored_count, skipped_count)
+    """
+    if replace_existing:
+        session.exec(delete(OperationRow).where(OperationRow.pdf_id == pdf_id))
+
+    stored_count = 0
+    skipped_count = 0
+    
+    for op in operations:
+        # Generate hash for the operation
+        operation_hash = generate_operation_hash(op)
+        
+        # Check if operation already exists (if skip_duplicates is True)
+        if skip_duplicates:
+            existing_operation = check_operation_exists_by_hash(session, operation_hash)
+            if existing_operation:
+                skipped_count += 1
+                continue
+        
+        # Create new operation row
+        row = OperationRow(
+            pdf_id=pdf_id,
+            transaction_date=op.transaction_date,
+            processed_date=op.processed_date,
+            description=op.description,
+            amount_lei=op.amount_lei,
+            operation_hash=operation_hash,
+        )
+        session.add(row)
+        stored_count += 1
+    
+    session.commit()
+    return stored_count, skipped_count
+
+
+def migrate_existing_operations_to_hashes(session: Session) -> int:
+    """
+    Add hashes to existing operations that don't have them.
+    This is useful for migrating existing databases to use the hash system.
+    
+    Args:
+        session: Database session
+        
+    Returns:
+        Number of operations updated
+    """
+    # Get all operations without hashes
+    operations_without_hash = session.exec(
+        select(OperationRow).where(OperationRow.operation_hash.is_(None))
+    ).all()
+    
+    updated_count = 0
+    
+    for operation in operations_without_hash:
+        # Create a temporary Operation object to generate hash
+        from pdf_processor import Operation
+        temp_op = Operation(
+            transaction_date=operation.transaction_date,
+            processed_date=operation.processed_date,
+            description=operation.description,
+            amount_lei=operation.amount_lei,
+        )
+        
+        # Generate and set the hash (processed_date is excluded in generate_operation_hash)
+        operation.operation_hash = generate_operation_hash(temp_op)
+        session.add(operation)
+        updated_count += 1
+    
+    if updated_count > 0:
+        session.commit()
+    
+    return updated_count
+
+
+def get_duplicate_operations(session: Session) -> List[Tuple[OperationRow, OperationRow]]:
+    """
+    Find duplicate operations in the database based on their hashes.
+    
+    Args:
+        session: Database session
+        
+    Returns:
+        List of tuples containing duplicate operation pairs
+    """
+    from sqlalchemy import func
+    
+    # Find operations with the same hash (duplicates)
+    duplicate_hashes = session.exec(
+        select(OperationRow.operation_hash)
+        .where(OperationRow.operation_hash.is_not(None))
+        .group_by(OperationRow.operation_hash)
+        .having(func.count(OperationRow.id) > 1)
+    ).all()
+    
+    duplicates = []
+    
+    for hash_value in duplicate_hashes:
+        if hash_value:
+            operations_with_hash = session.exec(
+                select(OperationRow).where(OperationRow.operation_hash == hash_value)
+            ).all()
+            
+            # Create pairs of duplicates
+            for i in range(len(operations_with_hash)):
+                for j in range(i + 1, len(operations_with_hash)):
+                    duplicates.append((operations_with_hash[i], operations_with_hash[j]))
+    
+    return duplicates
 
 
 def get_pdf_by_path(session: Session, file_path: str | Path) -> Optional[PDF]:
@@ -208,7 +421,19 @@ def get_operations_with_null_types(session: Session, pdf_id: Optional[int] = Non
 def process_and_store(
     pdf_path: str | Path,
     db_path: str | Path,
-) -> Tuple[int, int]:
+    skip_duplicates: bool = True,
+) -> Tuple[int, int, int]:
+    """
+    Process PDF and store operations with optional deduplication.
+    
+    Args:
+        pdf_path: Path to the PDF file
+        db_path: Path to the database
+        skip_duplicates: Whether to skip duplicate operations
+        
+    Returns:
+        Tuple of (pdf_id, stored_count, skipped_count)
+    """
     pdf_path = Path(pdf_path)
     engine = get_engine(db_path)
     init_db(engine)
@@ -216,8 +441,10 @@ def process_and_store(
         summary = process_pdf(str(pdf_path))
         pdf_id = store_pdf_summary(session, str(pdf_path), summary)
         ops = extract_card_operations(str(pdf_path))
-        n = store_operations(session, pdf_id, ops)
-        return pdf_id, n
+        stored_count, skipped_count = store_operations_with_deduplication(
+            session, pdf_id, ops, skip_duplicates=skip_duplicates
+        )
+        return pdf_id, stored_count, skipped_count
 
 
 def process_and_store_with_classification(
@@ -225,7 +452,8 @@ def process_and_store_with_classification(
     db_path: str | Path,
     config_path: Optional[str] = None,
     auto_assign_high_confidence: bool = True,
-) -> Tuple[int, int, List[Tuple[int, str, str, float]]]:
+    skip_duplicates: bool = True,
+) -> Tuple[int, int, int, List[Tuple[int, str, str, float]]]:
     """
     Process PDF, store operations, and classify them using the operations matcher
     
@@ -234,9 +462,10 @@ def process_and_store_with_classification(
         db_path: Path to the database
         config_path: Optional path to operations matching configuration
         auto_assign_high_confidence: Whether to automatically assign high confidence classifications
+        skip_duplicates: Whether to skip duplicate operations
         
     Returns:
-        Tuple of (pdf_id, operations_count, classification_results)
+        Tuple of (pdf_id, stored_count, skipped_count, classification_results)
         classification_results contains (operation_id, description, type_name, confidence)
     """
     pdf_path = Path(pdf_path)
@@ -249,8 +478,10 @@ def process_and_store_with_classification(
         pdf_id = store_pdf_summary(session, str(pdf_path), summary)
         operations, suggestions = extract_and_classify_operations(str(pdf_path), config_path)
         
-        # Store operations
-        n = store_operations(session, pdf_id, operations)
+        # Store operations with deduplication
+        stored_count, skipped_count = store_operations_with_deduplication(
+            session, pdf_id, operations, skip_duplicates=skip_duplicates
+        )
         
         # Get operation type mappings
         type_name_to_id = {ot.name: ot.id for ot in get_operation_types(session)}
@@ -283,7 +514,7 @@ def process_and_store_with_classification(
             
             session.commit()
         
-        return pdf_id, n, classification_results
+        return pdf_id, stored_count, skipped_count, classification_results
 
 
 def get_classification_suggestions_for_pdf(

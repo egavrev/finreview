@@ -2,6 +2,7 @@ from fastapi import FastAPI, UploadFile, File, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from sqlmodel import Session, select
+from sqlalchemy import delete
 from typing import List, Optional
 import uvicorn
 from pathlib import Path
@@ -18,7 +19,8 @@ from sql_utils import (
     get_pdf_by_path, get_operations_for_pdf, create_operation_type, get_operation_types,
     get_operation_type_by_id, update_operation_type, delete_operation_type,
     assign_operation_type, get_operations_by_type, get_operations_with_types,
-    get_operations_with_null_types, get_available_months, get_monthly_report_data, get_operations_by_type_for_month
+    get_operations_with_null_types, get_available_months, get_monthly_report_data, get_operations_by_type_for_month,
+    get_duplicate_operations
 )
 from pdf_processor import PDFSummary, Operation
 
@@ -27,7 +29,8 @@ app = FastAPI(title="Financial Review API", version="1.0.0")
 # CORS middleware for frontend communication
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],  # Next.js default port
+    #add as well 192.168.0.6:3000
+    allow_origins=["http://localhost:3000", "http://192.168.0.6:3000", "http://192.168.0.6:8000"],  # Next.js default port
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -51,7 +54,7 @@ async def upload_pdf(
     file: UploadFile = File(...),
     session: Session = Depends(get_session)
 ):
-    """Upload and process a PDF file"""
+    """Upload and process a PDF file with deduplication"""
     if not file.filename.lower().endswith('.pdf'):
         raise HTTPException(status_code=400, detail="Only PDF files are allowed")
     
@@ -61,8 +64,8 @@ async def upload_pdf(
         tmp_path = Path(tmp_file.name)
     
     try:
-        # Process the PDF
-        pdf_id, ops_count = process_and_store(tmp_path, DB_PATH)
+        # Process the PDF with deduplication enabled
+        pdf_id, stored_count, skipped_count = process_and_store(tmp_path, DB_PATH, skip_duplicates=True)
         
         # Get the processed data
         pdf_record = get_pdf_by_path(session, tmp_path)
@@ -71,7 +74,13 @@ async def upload_pdf(
         return {
             "success": True,
             "pdf_id": pdf_id,
-            "operations_count": ops_count,
+            "operations_stored": stored_count,
+            "operations_skipped": skipped_count,
+            "total_operations_processed": stored_count + skipped_count,
+            "deduplication_info": {
+                "duplicates_found": skipped_count > 0,
+                "duplicate_percentage": (skipped_count / (stored_count + skipped_count) * 100) if (stored_count + skipped_count) > 0 else 0
+            },
             "pdf_summary": {
                 "client_name": pdf_record.client_name,
                 "account_number": pdf_record.account_number,
@@ -88,10 +97,15 @@ async def upload_pdf(
 
 @app.get("/pdfs")
 async def list_pdfs(session: Session = Depends(get_session)):
-    """List all processed PDFs"""
+    """List all processed PDFs with operation counts"""
     pdfs = session.exec(select(PDF).order_by(PDF.id.desc())).all()
-    return [
-        {
+    
+    result = []
+    for pdf in pdfs:
+        # Get operation count for this PDF
+        operations_count = session.exec(select(OperationRow).where(OperationRow.pdf_id == pdf.id)).all()
+        
+        result.append({
             "id": pdf.id,
             "file_path": pdf.file_path,
             "client_name": pdf.client_name,
@@ -100,9 +114,10 @@ async def list_pdfs(session: Session = Depends(get_session)):
             "sold_initial": pdf.sold_initial,
             "sold_final": pdf.sold_final,
             "created_at": pdf.created_at,
-        }
-        for pdf in pdfs
-    ]
+            "operations_count": len(operations_count),
+        })
+    
+    return result
 
 @app.get("/pdfs/{pdf_id}")
 async def get_pdf_details(pdf_id: int, session: Session = Depends(get_session)):
@@ -136,6 +151,37 @@ async def get_pdf_details(pdf_id: int, session: Session = Depends(get_session)):
             for op in operations
         ]
     }
+
+
+@app.delete("/pdfs/{pdf_id}")
+async def delete_pdf(pdf_id: int, session: Session = Depends(get_session)):
+    """Delete a PDF and all its associated operations"""
+    pdf = session.exec(select(PDF).where(PDF.id == pdf_id)).first()
+    if not pdf:
+        raise HTTPException(status_code=404, detail="PDF not found")
+    
+    try:
+        # Get operations count before deletion
+        operations_count = session.exec(select(OperationRow).where(OperationRow.pdf_id == pdf_id)).all()
+        operations_deleted_count = len(operations_count)
+        
+        # Delete all operations associated with this PDF
+        for operation in operations_count:
+            session.delete(operation)
+        
+        # Delete the PDF record
+        session.delete(pdf)
+        session.commit()
+        
+        return {
+            "success": True,
+            "message": f"PDF '{pdf.file_path}' and all associated operations deleted successfully",
+            "pdf_id": pdf_id,
+            "operations_deleted": operations_deleted_count
+        }
+    except Exception as e:
+        session.rollback()
+        raise HTTPException(status_code=500, detail=f"Error deleting PDF: {str(e)}")
 
 @app.get("/operations")
 async def list_operations(
@@ -386,6 +432,73 @@ async def get_monthly_operations_by_type(
         raise HTTPException(status_code=404, detail=result["error"])
     
     return result
+
+
+# Deduplication management endpoints
+@app.get("/duplicates")
+async def get_duplicates(session: Session = Depends(get_session)):
+    """Get all duplicate operations in the database"""
+    try:
+        duplicates = get_duplicate_operations(session)
+        return {
+            "duplicate_pairs": len(duplicates),
+            "duplicates": [
+                {
+                    "operation1": {
+                        "id": op1.id,
+                        "pdf_id": op1.pdf_id,
+                        "transaction_date": op1.transaction_date,
+                        "description": op1.description,
+                        "amount_lei": op1.amount_lei,
+                        "operation_hash": op1.operation_hash,
+                    },
+                    "operation2": {
+                        "id": op2.id,
+                        "pdf_id": op2.pdf_id,
+                        "transaction_date": op2.transaction_date,
+                        "description": op2.description,
+                        "amount_lei": op2.amount_lei,
+                        "operation_hash": op2.operation_hash,
+                    }
+                }
+                for op1, op2 in duplicates
+            ]
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error getting duplicates: {str(e)}")
+
+
+@app.get("/deduplication-stats")
+async def get_deduplication_stats(session: Session = Depends(get_session)):
+    """Get deduplication statistics"""
+    try:
+        # Get total operations
+        total_operations = session.exec(select(OperationRow)).all()
+        
+        # Get operations with hashes
+        operations_with_hashes = session.exec(
+            select(OperationRow).where(OperationRow.operation_hash.is_not(None))
+        ).all()
+        
+        # Get operations without hashes
+        operations_without_hashes = session.exec(
+            select(OperationRow).where(OperationRow.operation_hash.is_(None))
+        ).all()
+        
+        # Get duplicate pairs
+        duplicates = get_duplicate_operations(session)
+        
+        return {
+            "total_operations": len(total_operations),
+            "operations_with_hashes": len(operations_with_hashes),
+            "operations_without_hashes": len(operations_without_hashes),
+            "duplicate_pairs": len(duplicates),
+            "hash_coverage_percentage": (len(operations_with_hashes) / len(total_operations) * 100) if total_operations else 0,
+            "duplicate_percentage": (len(duplicates) * 2 / len(total_operations) * 100) if total_operations else 0
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error getting deduplication stats: {str(e)}")
+
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)

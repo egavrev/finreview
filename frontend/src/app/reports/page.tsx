@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { PieChart as RechartsPieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts'
 import { format, parseISO } from 'date-fns'
+import { API_ENDPOINTS } from '@/lib/api'
 
 interface AvailableMonth {
   year: number
@@ -98,7 +99,7 @@ export default function ReportsPage() {
 
   const fetchAvailableMonths = async () => {
     try {
-      const response = await fetch('http://localhost:8000/reports/available-months')
+      const response = await fetch(API_ENDPOINTS.AVAILABLE_MONTHS)
       if (response.ok) {
         const months = await response.json()
         setAvailableMonths(months)
@@ -117,7 +118,7 @@ export default function ReportsPage() {
     setLoading(true)
     try {
       const [year, month] = selectedMonth.split('-').map(Number)
-      const response = await fetch(`http://localhost:8000/reports/monthly/${year}/${month}`)
+      const response = await fetch(API_ENDPOINTS.MONTHLY_REPORT(year, month))
       if (response.ok) {
         const data = await response.json()
         setReportData(data)
@@ -135,7 +136,7 @@ export default function ReportsPage() {
     try {
       const [year, month] = selectedMonth.split('-').map(Number)
       const response = await fetch(
-        `http://localhost:8000/reports/monthly/${year}/${month}/type/${typeId}?limit=${limit}&offset=${offset}`
+        API_ENDPOINTS.MONTHLY_OPERATIONS_BY_TYPE(year, month, typeId) + `?limit=${limit}&offset=${offset}`
       )
       if (response.ok) {
         const data = await response.json()
