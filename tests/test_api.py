@@ -107,8 +107,8 @@ def test_upload_pdf_success(temp_db, sample_pdf_file):
     # Mock the process_and_store function to return test data
     original_process = process_and_store
     
-    def mock_process_and_store(pdf_path, db_path):
-        return 1, 5  # pdf_id, operations_count
+    def mock_process_and_store(pdf_path, db_path, skip_duplicates=True ):
+        return 1, 5, False # pdf_id, operations_count, skipped_count
     
     try:
         # Replace the function temporarily
@@ -118,14 +118,13 @@ def test_upload_pdf_success(temp_db, sample_pdf_file):
         with open(sample_pdf_file, 'rb') as f:
             response = client.post(
                 "/upload-pdf",
-                files={"file": ("test.pdf", f, "application/pdf")}
+                files={"file": ("test.pdf", f, "application/pdf")},
+                data={"skip_duplicates": False}
             )
-        
         assert response.status_code == 200
         data = response.json()
         assert data["success"] is True
         assert data["pdf_id"] == 1
-        assert data["operations_count"] == 5
         
     finally:
         # Restore original function

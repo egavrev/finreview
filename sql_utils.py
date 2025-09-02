@@ -247,46 +247,6 @@ def store_operations_with_deduplication(
     session.commit()
     return stored_count, skipped_count
 
-
-def migrate_existing_operations_to_hashes(session: Session) -> int:
-    """
-    Add hashes to existing operations that don't have them.
-    This is useful for migrating existing databases to use the hash system.
-    
-    Args:
-        session: Database session
-        
-    Returns:
-        Number of operations updated
-    """
-    # Get all operations without hashes
-    operations_without_hash = session.exec(
-        select(OperationRow).where(OperationRow.operation_hash.is_(None))
-    ).all()
-    
-    updated_count = 0
-    
-    for operation in operations_without_hash:
-        # Create a temporary Operation object to generate hash
-        from pdf_processor import Operation
-        temp_op = Operation(
-            transaction_date=operation.transaction_date,
-            processed_date=operation.processed_date,
-            description=operation.description,
-            amount_lei=operation.amount_lei,
-        )
-        
-        # Generate and set the hash (processed_date is excluded in generate_operation_hash)
-        operation.operation_hash = generate_operation_hash(temp_op)
-        session.add(operation)
-        updated_count += 1
-    
-    if updated_count > 0:
-        session.commit()
-    
-    return updated_count
-
-
 def get_duplicate_operations(session: Session) -> List[Tuple[OperationRow, OperationRow]]:
     """
     Find duplicate operations in the database based on their hashes.
@@ -720,48 +680,45 @@ def auto_assign_all_high_confidence_operations(
     # Get operation type mappings
     type_name_to_id = {ot.name: ot.id for ot in get_operation_types(session)}
     
-    # Get thresholds from config
+    # Get thresholds from config and matcher
     try:
         from operations_matcher import get_matcher
         matcher = get_matcher(config_path)
         thresholds = matcher.config['confidence_thresholds']
+        
+        assigned_count = 0
+        
+        for operation in unclassified_operations:
+            if operation.description:
+                result = matcher.classify_operation(operation.description)
+                if result:
+                    # Determine if should auto-assign based on method and confidence
+                    should_auto_assign = False
+                    
+                    if result.method == 'exact':
+                        should_auto_assign = True
+                    elif result.method == 'fuzzy' and result.confidence >= thresholds.get('fuzzy_match_auto', 95):
+                        should_auto_assign = True
+                    elif result.method == 'keyword' and result.confidence >= thresholds.get('keyword_match_auto', 80):
+                        should_auto_assign = True
+                    elif result.method == 'pattern' and result.confidence >= thresholds.get('pattern_match_auto', 75):
+                        should_auto_assign = True
+                    
+                    if should_auto_assign:
+                        type_id = type_name_to_id.get(result.type_name)
+                        if type_id:
+                            operation.type_id = type_id
+                            session.add(operation)
+                            assigned_count += 1
+        
+        if assigned_count > 0:
+            session.commit()
+        
+        return assigned_count
+        
     except Exception:
-        # Default thresholds if config not available
-        thresholds = {
-            'fuzzy_match_auto': 95,
-            'keyword_match_auto': 80,
-            'pattern_match_auto': 75
-        }
-    
-    assigned_count = 0
-    
-    for operation in unclassified_operations:
-        if operation.description:
-            result = matcher.classify_operation(operation.description)
-            if result:
-                # Determine if should auto-assign based on method and confidence
-                should_auto_assign = False
-                
-                if result.method == 'exact':
-                    should_auto_assign = True
-                elif result.method == 'fuzzy' and result.confidence >= thresholds.get('fuzzy_match_auto', 95):
-                    should_auto_assign = True
-                elif result.method == 'keyword' and result.confidence >= thresholds.get('keyword_match_auto', 80):
-                    should_auto_assign = True
-                elif result.method == 'pattern' and result.confidence >= thresholds.get('pattern_match_auto', 75):
-                    should_auto_assign = True
-                
-                if should_auto_assign:
-                    type_id = type_name_to_id.get(result.type_name)
-                    if type_id:
-                        operation.type_id = type_id
-                        session.add(operation)
-                        assigned_count += 1
-    
-    if assigned_count > 0:
-        session.commit()
-    
-    return assigned_count
+        # If matcher is not available, return 0
+        return 0
 
 
 def get_monthly_report_data(
