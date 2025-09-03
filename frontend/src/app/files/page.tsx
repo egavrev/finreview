@@ -33,10 +33,16 @@ export default function FilesPage() {
   const fetchPDFs = async () => {
     try {
       const response = await fetch(API_ENDPOINTS.PDFS)
-      const data = await response.json()
-      setPdfs(data)
+      if (response.ok) {
+        const data = await response.json()
+        setPdfs(data || [])
+      } else {
+        console.error('Failed to fetch PDFs:', response.status)
+        setPdfs([])
+      }
     } catch (error) {
       console.error('Error fetching PDFs:', error)
+      setPdfs([])
     }
   }
 

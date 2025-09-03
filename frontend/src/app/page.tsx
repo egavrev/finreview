@@ -27,6 +27,14 @@ interface PDF {
   operations_count: number
 }
 
+export const formatCurrency = (amount: number | null) => {
+  if (amount === null) return 'N/A'
+  return new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'MDL',
+  }).format(amount)
+}
+
 export default function Dashboard() {
   const [statistics, setStatistics] = useState<Statistics | null>(null)
   const [pdfs, setPdfs] = useState<PDF[]>([])
@@ -54,14 +62,6 @@ export default function Dashboard() {
     } catch (error) {
       console.error('Error fetching PDFs:', error)
     }
-  }
-
-  const formatCurrency = (amount: number | null) => {
-    if (amount === null) return 'N/A'
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'MDL',
-    }).format(amount)
   }
 
   return (

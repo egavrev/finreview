@@ -106,9 +106,14 @@ export default function ReportsPage() {
         if (months.length > 0) {
           setSelectedMonth(months[0].label)
         }
+      } else {
+        // Handle non-ok response
+        setAvailableMonths([])
+        console.error('Failed to fetch available months:', response.status)
       }
     } catch (error) {
       console.error('Error fetching available months:', error)
+      setAvailableMonths([])
     }
   }
 
@@ -122,9 +127,14 @@ export default function ReportsPage() {
       if (response.ok) {
         const data = await response.json()
         setReportData(data)
+      } else {
+        // Handle non-ok response
+        setReportData(null)
+        console.error('Failed to fetch monthly report:', response.status)
       }
     } catch (error) {
       console.error('Error fetching monthly report:', error)
+      setReportData(null)
     } finally {
       setLoading(false)
     }
@@ -149,9 +159,18 @@ export default function ReportsPage() {
         } else {
           setTypeOperations(data)
         }
+      } else {
+        // Handle non-ok response
+        console.error('Failed to fetch type operations:', response.status)
+        if (!append) {
+          setTypeOperations(null)
+        }
       }
     } catch (error) {
       console.error('Error fetching type operations:', error)
+      if (!append) {
+        setTypeOperations(null)
+      }
     }
   }
 
@@ -327,11 +346,17 @@ export default function ReportsPage() {
               <SelectValue placeholder="Select month" />
             </SelectTrigger>
             <SelectContent>
-              {availableMonths.map((month) => (
-                <SelectItem key={month.label} value={month.label}>
-                  {month.label}
+              {availableMonths && availableMonths.length > 0 ? (
+                availableMonths.map((month) => (
+                  <SelectItem key={month.label} value={month.label}>
+                    {month.label}
+                  </SelectItem>
+                ))
+              ) : (
+                <SelectItem value="no-data" disabled>
+                  No months available
                 </SelectItem>
-              ))}
+              )}
             </SelectContent>
           </Select>
           {loading && (

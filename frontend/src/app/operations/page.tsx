@@ -31,7 +31,7 @@ interface OperationType {
 export default function OperationsPage() {
   const [operations, setOperations] = useState<Operation[]>([])
   const [operationTypes, setOperationTypes] = useState<OperationType[]>([])
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(2) // Count of pending requests
   const [assignDialogOpen, setAssignDialogOpen] = useState(false)
   const [newTypeDialogOpen, setNewTypeDialogOpen] = useState(false)
   const [selectedOperation, setSelectedOperation] = useState<Operation | null>(null)
@@ -70,7 +70,7 @@ export default function OperationsPage() {
     } catch (error) {
       console.error('Error fetching operations:', error)
     } finally {
-      setLoading(false)
+      setLoading(prev => prev - 1)
     }
   }
 
@@ -83,6 +83,8 @@ export default function OperationsPage() {
       }
     } catch (error) {
       console.error('Error fetching operation types:', error)
+    } finally {
+      setLoading(prev => prev - 1)
     }
   }
 
@@ -298,7 +300,7 @@ export default function OperationsPage() {
     }).format(amount)
   }
 
-  if (loading) {
+  if (loading > 0) {
     return (
       <div className="p-8">
         <div className="text-center py-12">
@@ -348,7 +350,7 @@ export default function OperationsPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {operations.map((operation) => (
+                {(operations || []).map((operation) => (
                   <TableRow key={operation.id}>
                     <TableCell>
                       {formatDate(operation.transaction_date)}
