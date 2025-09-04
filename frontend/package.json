@@ -4,8 +4,8 @@
   "description": "Financial Review Frontend",
   "private": true,
   "scripts": {
-    "dev_commeented": "next dev -H 0.0.0.0",
-    "dev": "next dev",
+    "dev_commeented": "next dev",
+    "dev": "next dev -H 0.0.0.0",
     "dev:localhost": "next dev",
     "build": "next build",
     "start": "next start",

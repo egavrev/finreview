@@ -23,6 +23,8 @@ from sql_utils import (
     get_duplicate_operations
 )
 from pdf_processor import PDFSummary, Operation
+from rules_api import router as rules_router
+from rules_models import MatchingRule, RuleCategory, RuleMatchLog
 
 app = FastAPI(title="Financial Review API", version="1.0.0")
 
@@ -37,9 +39,12 @@ app.add_middleware(
 )
 
 # Database setup
-DB_PATH = Path("db.sqlite")
+DB_PATH = Path(__file__).parent / "db.sqlite"  # Database in api/ directory
 engine = get_engine(DB_PATH)
 init_db(engine)
+
+# Include routers
+app.include_router(rules_router)
 
 def get_session():
     with Session(engine) as session:

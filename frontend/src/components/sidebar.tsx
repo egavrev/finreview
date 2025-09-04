@@ -10,7 +10,8 @@ import {
   FileText, 
   FolderOpen,
   Menu,
-  X
+  X,
+  Settings
 } from 'lucide-react'
 
 const menuItems = [
@@ -33,6 +34,11 @@ const menuItems = [
     title: 'Files',
     href: '/files',
     icon: FolderOpen,
+  },
+  {
+    title: 'Rules Management',
+    href: '/rules',
+    icon: Settings,
   },
 ]
 

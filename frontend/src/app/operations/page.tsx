@@ -54,6 +54,8 @@ export default function OperationsPage() {
   const [monthlyOperationsLoading, setMonthlyOperationsLoading] = useState(false)
   const [deleteConfirmDialogOpen, setDeleteConfirmDialogOpen] = useState(false)
   const [operationToDelete, setOperationToDelete] = useState<any>(null)
+  const [rulesMatcherRunning, setRulesMatcherRunning] = useState(false)
+  const [rulesMatcherResults, setRulesMatcherResults] = useState<any>(null)
 
   useEffect(() => {
     fetchOperations()
@@ -300,6 +302,63 @@ export default function OperationsPage() {
     }).format(amount)
   }
 
+  const runRulesMatcher = async () => {
+    setRulesMatcherRunning(true)
+    setRulesMatcherResults(null)
+    
+    try {
+      // First, get all operations without types
+      const response = await fetch(API_ENDPOINTS.OPERATIONS_NULL_TYPES)
+      if (response.ok) {
+        const unclassifiedOps = await response.json()
+        
+        if (unclassifiedOps.length === 0) {
+          setRulesMatcherResults({
+            success: true,
+            message: 'No unclassified operations found',
+            processed: 0,
+            classified: 0,
+            remaining: 0
+          })
+          return
+        }
+
+        // Run rules matcher on all unclassified operations
+        const matcherResponse = await fetch(API_ENDPOINTS.RULES.RUN_MATCHER, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            operation_ids: unclassifiedOps.map((op: any) => op.id),
+            auto_assign_high_confidence: true 
+          })
+        })
+
+        if (matcherResponse.ok) {
+          const results = await matcherResponse.json()
+          setRulesMatcherResults(results)
+          
+          // Refresh the operations list to show updated classifications
+          await fetchOperations()
+        } else {
+          setRulesMatcherResults({
+            success: false,
+            message: 'Failed to run rules matcher',
+            error: await matcherResponse.text()
+          })
+        }
+      }
+    } catch (error) {
+      console.error('Error running rules matcher:', error)
+      setRulesMatcherResults({
+        success: false,
+        message: 'Error running rules matcher',
+        error: error instanceof Error ? error.message : 'Unknown error'
+      })
+    } finally {
+      setRulesMatcherRunning(false)
+    }
+  }
+
   if (loading > 0) {
     return (
       <div className="p-8">
@@ -322,13 +381,35 @@ export default function OperationsPage() {
       
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Activity className="h-5 w-5" />
-            Operations Without Types ({operations.length})
-          </CardTitle>
-          <CardDescription>
-            These operations need to be categorized. Select an existing type or create a new one.
-          </CardDescription>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                <Activity className="h-5 w-5" />
+                Operations Without Types ({operations.length})
+              </CardTitle>
+              <CardDescription>
+                These operations need to be categorized. Use the Rules Matcher to automatically classify them or assign types manually.
+              </CardDescription>
+            </div>
+            <Button
+              onClick={runRulesMatcher}
+              disabled={rulesMatcherRunning || operations.length === 0}
+              className="flex items-center gap-2"
+              variant="outline"
+            >
+              {rulesMatcherRunning ? (
+                <>
+                  <Activity className="h-4 w-4 animate-spin" />
+                  Running...
+                </>
+              ) : (
+                <>
+                  <Activity className="h-4 w-4" />
+                  Run Rules Matcher
+                </>
+              )}
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
           {operations.length === 0 ? (
@@ -375,6 +456,41 @@ export default function OperationsPage() {
                 ))}
               </TableBody>
             </Table>
+          )}
+          
+          {/* Rules Matcher Results */}
+          {rulesMatcherResults && (
+            <div className="mt-6 p-4 border rounded-lg bg-muted/50">
+              <div className="flex items-center gap-2 mb-2">
+                <Activity className="h-4 w-4" />
+                <h4 className="font-medium">Rules Matcher Results</h4>
+              </div>
+              {rulesMatcherResults.success ? (
+                <div className="space-y-2">
+                  <p className="text-sm text-green-700">{rulesMatcherResults.message}</p>
+                  {rulesMatcherResults.processed > 0 && (
+                    <div className="grid grid-cols-3 gap-4 text-sm">
+                      <div>
+                        <span className="font-medium">Processed:</span> {rulesMatcherResults.processed}
+                      </div>
+                      <div>
+                        <span className="font-medium">Classified:</span> {rulesMatcherResults.classified}
+                      </div>
+                      <div>
+                        <span className="font-medium">Remaining:</span> {rulesMatcherResults.remaining}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <p className="text-sm text-red-700">{rulesMatcherResults.message}</p>
+                  {rulesMatcherResults.error && (
+                    <p className="text-xs text-red-600">{rulesMatcherResults.error}</p>
+                  )}
+                </div>
+              )}
+            </div>
           )}
         </CardContent>
       </Card>
