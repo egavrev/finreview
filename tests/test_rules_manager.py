@@ -17,7 +17,7 @@ from rules_manager import (
     # Usage tracking
     log_rule_match, get_rule_statistics, get_category_statistics,
     # Testing and validation
-    test_rule_pattern, validate_rule_pattern
+    run_rule_pattern_test
 )
 
 
@@ -325,7 +325,7 @@ class TestRuleTestingAndValidation:
         """Test exact rule pattern testing"""
         exact_rule = sample_rules[0]  # AGROBAZAR rule
         
-        results = test_rule_pattern(session, exact_rule.id, [
+        results = run_rule_pattern_test(session, exact_rule.id, [
             "AGROBAZAR", "agrobazar", "OTHER STORE", "AGROBAZAR EXTRA"
         ])
         
@@ -340,7 +340,7 @@ class TestRuleTestingAndValidation:
         """Test keyword rule pattern testing"""
         keyword_rule = sample_rules[1]  # FARMACIA rule
         
-        results = test_rule_pattern(session, keyword_rule.id, [
+        results = run_rule_pattern_test(session, keyword_rule.id, [
             "FARMACIA FAMILIEI", "FARMACIA MIRON", "RESTAURANT", "FARMACIA"
         ])
         
@@ -355,7 +355,7 @@ class TestRuleTestingAndValidation:
         """Test regex rule pattern testing"""
         pattern_rule = sample_rules[2]  # .*GAS.* rule
         
-        results = test_rule_pattern(session, pattern_rule.id, [
+        results = run_rule_pattern_test(session, pattern_rule.id, [
             "GAS STATION", "FUEL GAS", "RESTAURANT", "GAS"
         ])
         
@@ -369,6 +369,7 @@ class TestRuleTestingAndValidation:
     def test_validate_rule_pattern(self):
         """Test rule pattern validation"""
         # Valid patterns
+        from rules_manager import validate_rule_pattern
         assert validate_rule_pattern("exact", "Valid Pattern")[0] is True
         assert validate_rule_pattern("keyword", "Valid Keyword")[0] is True
         assert validate_rule_pattern("pattern", ".*Valid.*")[0] is True
