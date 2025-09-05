@@ -24,7 +24,7 @@ from rules_manager import (
     # Usage tracking
     get_rule_statistics, get_category_statistics, log_rule_match,
     # Testing and validation
-    run_rule_pattern_test
+    run_rule_pattern_test, validate_rule_pattern
 )
 
 router = APIRouter(prefix="/api/rules", tags=["rules"])
@@ -154,7 +154,7 @@ def create_category(
         db_category = create_rule_category(
             session, category.name, category.description, category.color
         )
-        return RuleCategoryResponse(**db_category.dict())
+        return RuleCategoryResponse(**db_category.__dict__)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -167,7 +167,7 @@ def list_categories(
     """Get all rule categories"""
     try:
         categories = get_rule_categories(session, active_only=active_only)
-        return [RuleCategoryResponse(**cat.dict()) for cat in categories]
+        return [RuleCategoryResponse(**cat.__dict__) for cat in categories]
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -182,7 +182,7 @@ def get_category(
         category = get_rule_category_by_id(session, category_id)
         if not category:
             raise HTTPException(status_code=404, detail="Category not found")
-        return RuleCategoryResponse(**category.dict())
+        return RuleCategoryResponse(**category.__dict__)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -204,7 +204,7 @@ def update_category(
         )
         if not updated_category:
             raise HTTPException(status_code=404, detail="Category not found")
-        return RuleCategoryResponse(**updated_category.dict())
+        return RuleCategoryResponse(**updated_category.__dict__)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -244,7 +244,7 @@ def create_rule(
             session, rule.rule_type, rule.category, rule.pattern,
             rule.weight, rule.priority, rule.created_by
         )
-        return MatchingRuleResponse(**db_rule.dict())
+        return MatchingRuleResponse(**db_rule.__dict__)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -261,7 +261,7 @@ def list_rules(
         rules = get_matching_rules(
             session, rule_type=rule_type, category=category, active_only=active_only
         )
-        return [MatchingRuleResponse(**rule.dict()) for rule in rules]
+        return [MatchingRuleResponse(**rule.__dict__) for rule in rules]
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -276,7 +276,7 @@ def get_rule(
         rule = get_matching_rule_by_id(session, rule_id)
         if not rule:
             raise HTTPException(status_code=404, detail="Rule not found")
-        return MatchingRuleResponse(**rule.dict())
+        return MatchingRuleResponse(**rule.__dict__)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -308,7 +308,7 @@ def update_rule(
         )
         if not updated_rule:
             raise HTTPException(status_code=404, detail="Rule not found")
-        return MatchingRuleResponse(**updated_rule.dict())
+        return MatchingRuleResponse(**updated_rule.__dict__)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

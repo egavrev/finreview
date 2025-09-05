@@ -1378,3 +1378,469 @@ def test_get_monthly_report_data_no_operations(temp_db):
 #     pytest.main([__file__])
 
 
+class TestClassificationFunctions:
+    """Test classification and auto-assignment functions"""
+    
+    def test_get_classification_suggestions_for_pdf_no_operations(self, temp_db):
+        """Test getting classification suggestions when no unclassified operations exist"""
+        with Session(get_engine(temp_db)) as session:
+            # Create a PDF
+            pdf = PDF(file_path="test.pdf", client_name="Test Client")
+            session.add(pdf)
+            session.commit()
+            
+            # Get classification suggestions
+            suggestions = get_classification_suggestions_for_pdf(session, pdf.id)
+            
+            assert suggestions == []
+    
+    def test_get_classification_suggestions_for_pdf_with_operations(self, temp_db):
+        """Test getting classification suggestions for operations"""
+        with Session(get_engine(temp_db)) as session:
+            # Create a PDF
+            pdf = PDF(file_path="test.pdf", client_name="Test Client")
+            session.add(pdf)
+            session.commit()
+            
+            # Create an unclassified operation
+            operation = OperationRow(
+                pdf_id=pdf.id,
+                description="AGROBAZAR CHISINAU",
+                amount_lei=100.0,
+                transaction_date="2023-01-01"
+            )
+            session.add(operation)
+            session.commit()
+            
+            # Mock the operations matcher
+            with patch('operations_matcher.get_matcher') as mock_get_matcher:
+                mock_matcher = MagicMock()
+                mock_result = MagicMock()
+                mock_result.type_name = "Food"
+                mock_result.confidence = 95.0
+                mock_result.method = "fuzzy"
+                mock_matcher.classify_operation.return_value = mock_result
+                mock_get_matcher.return_value = mock_matcher
+                
+                # Get classification suggestions
+                suggestions = get_classification_suggestions_for_pdf(session, pdf.id)
+                
+                assert len(suggestions) == 1
+                assert suggestions[0][0] == operation
+                assert suggestions[0][1] == "Food"
+                assert suggestions[0][2] == 95.0
+                assert suggestions[0][3] == "fuzzy"
+    
+    def test_get_classification_suggestions_for_pdf_exception(self, temp_db):
+        """Test getting classification suggestions when matcher raises exception"""
+        with Session(get_engine(temp_db)) as session:
+            # Create a PDF
+            pdf = PDF(file_path="test.pdf", client_name="Test Client")
+            session.add(pdf)
+            session.commit()
+            
+            # Create an unclassified operation
+            operation = OperationRow(
+                pdf_id=pdf.id,
+                description="AGROBAZAR CHISINAU",
+                amount_lei=100.0,
+                transaction_date="2023-01-01"
+            )
+            session.add(operation)
+            session.commit()
+            
+            # Mock the operations matcher to raise exception
+            with patch('operations_matcher.get_matcher', side_effect=Exception("Test error")):
+                # Get classification suggestions
+                suggestions = get_classification_suggestions_for_pdf(session, pdf.id)
+                
+                assert suggestions == []
+    
+    def test_auto_assign_high_confidence_operations_no_suggestions(self, temp_db):
+        """Test auto-assigning when no suggestions available"""
+        with Session(get_engine(temp_db)) as session:
+            # Create a PDF
+            pdf = PDF(file_path="test.pdf", client_name="Test Client")
+            session.add(pdf)
+            session.commit()
+            
+            # Mock get_classification_suggestions_for_pdf to return empty list
+            with patch('sql_utils.get_classification_suggestions_for_pdf', return_value=[]):
+                assigned_count = auto_assign_high_confidence_operations(session, pdf.id)
+                
+                assert assigned_count == 0
+    
+    def test_auto_assign_high_confidence_operations_exact_match(self, temp_db):
+        """Test auto-assigning exact match operations"""
+        with Session(get_engine(temp_db)) as session:
+            # Create a PDF
+            pdf = PDF(file_path="test.pdf", client_name="Test Client")
+            session.add(pdf)
+            session.commit()
+            
+            # Create an operation type
+            op_type = OperationType(name="Food", description="Food purchases")
+            session.add(op_type)
+            session.commit()
+            
+            # Create an unclassified operation
+            operation = OperationRow(
+                pdf_id=pdf.id,
+                description="AGROBAZAR CHISINAU",
+                amount_lei=100.0,
+                transaction_date="2023-01-01"
+            )
+            session.add(operation)
+            session.commit()
+            
+            # Mock get_classification_suggestions_for_pdf
+            with patch('sql_utils.get_classification_suggestions_for_pdf') as mock_get_suggestions:
+                mock_get_suggestions.return_value = [
+                    (operation, "Food", 100.0, "exact")
+                ]
+                
+                assigned_count = auto_assign_high_confidence_operations(session, pdf.id)
+                
+                assert assigned_count == 1
+                
+                # Verify operation was assigned
+                session.refresh(operation)
+                assert operation.type_id == op_type.id
+    
+    def test_auto_assign_high_confidence_operations_fuzzy_match_high_confidence(self, temp_db):
+        """Test auto-assigning fuzzy match operations with high confidence"""
+        with Session(get_engine(temp_db)) as session:
+            # Create a PDF
+            pdf = PDF(file_path="test.pdf", client_name="Test Client")
+            session.add(pdf)
+            session.commit()
+            
+            # Create an operation type
+            op_type = OperationType(name="Food", description="Food purchases")
+            session.add(op_type)
+            session.commit()
+            
+            # Create an unclassified operation
+            operation = OperationRow(
+                pdf_id=pdf.id,
+                description="AGROBAZAR CHISINAU",
+                amount_lei=100.0,
+                transaction_date="2023-01-01"
+            )
+            session.add(operation)
+            session.commit()
+            
+            # Mock get_classification_suggestions_for_pdf
+            with patch('sql_utils.get_classification_suggestions_for_pdf') as mock_get_suggestions:
+                mock_get_suggestions.return_value = [
+                    (operation, "Food", 96.0, "fuzzy")  # Above 95% threshold
+                ]
+                
+                assigned_count = auto_assign_high_confidence_operations(session, pdf.id)
+                
+                assert assigned_count == 1
+                
+                # Verify operation was assigned
+                session.refresh(operation)
+                assert operation.type_id == op_type.id
+    
+    def test_auto_assign_high_confidence_operations_fuzzy_match_low_confidence(self, temp_db):
+        """Test auto-assigning fuzzy match operations with low confidence"""
+        with Session(get_engine(temp_db)) as session:
+            # Create a PDF
+            pdf = PDF(file_path="test.pdf", client_name="Test Client")
+            session.add(pdf)
+            session.commit()
+            
+            # Create an operation type
+            op_type = OperationType(name="Food", description="Food purchases")
+            session.add(op_type)
+            session.commit()
+            
+            # Create an unclassified operation
+            operation = OperationRow(
+                pdf_id=pdf.id,
+                description="AGROBAZAR CHISINAU",
+                amount_lei=100.0,
+                transaction_date="2023-01-01"
+            )
+            session.add(operation)
+            session.commit()
+            
+            # Mock get_classification_suggestions_for_pdf
+            with patch('sql_utils.get_classification_suggestions_for_pdf') as mock_get_suggestions:
+                mock_get_suggestions.return_value = [
+                    (operation, "Food", 90.0, "fuzzy")  # Below 95% threshold
+                ]
+                
+                assigned_count = auto_assign_high_confidence_operations(session, pdf.id)
+                
+                assert assigned_count == 0
+                
+                # Verify operation was not assigned
+                session.refresh(operation)
+                assert operation.type_id is None
+    
+    def test_auto_assign_high_confidence_operations_keyword_match_high_confidence(self, temp_db):
+        """Test auto-assigning keyword match operations with high confidence"""
+        with Session(get_engine(temp_db)) as session:
+            # Create a PDF
+            pdf = PDF(file_path="test.pdf", client_name="Test Client")
+            session.add(pdf)
+            session.commit()
+            
+            # Create an operation type
+            op_type = OperationType(name="Food", description="Food purchases")
+            session.add(op_type)
+            session.commit()
+            
+            # Create an unclassified operation
+            operation = OperationRow(
+                pdf_id=pdf.id,
+                description="AGROBAZAR CHISINAU",
+                amount_lei=100.0,
+                transaction_date="2023-01-01"
+            )
+            session.add(operation)
+            session.commit()
+            
+            # Mock get_classification_suggestions_for_pdf
+            with patch('sql_utils.get_classification_suggestions_for_pdf') as mock_get_suggestions:
+                mock_get_suggestions.return_value = [
+                    (operation, "Food", 85.0, "keyword")  # Above 80% threshold
+                ]
+                
+                assigned_count = auto_assign_high_confidence_operations(session, pdf.id)
+                
+                assert assigned_count == 1
+                
+                # Verify operation was assigned
+                session.refresh(operation)
+                assert operation.type_id == op_type.id
+    
+    def test_auto_assign_high_confidence_operations_pattern_match_high_confidence(self, temp_db):
+        """Test auto-assigning pattern match operations with high confidence"""
+        with Session(get_engine(temp_db)) as session:
+            # Create a PDF
+            pdf = PDF(file_path="test.pdf", client_name="Test Client")
+            session.add(pdf)
+            session.commit()
+            
+            # Create an operation type
+            op_type = OperationType(name="Food", description="Food purchases")
+            session.add(op_type)
+            session.commit()
+            
+            # Create an unclassified operation
+            operation = OperationRow(
+                pdf_id=pdf.id,
+                description="AGROBAZAR CHISINAU",
+                amount_lei=100.0,
+                transaction_date="2023-01-01"
+            )
+            session.add(operation)
+            session.commit()
+            
+            # Mock get_classification_suggestions_for_pdf
+            with patch('sql_utils.get_classification_suggestions_for_pdf') as mock_get_suggestions:
+                mock_get_suggestions.return_value = [
+                    (operation, "Food", 80.0, "pattern")  # Above 75% threshold
+                ]
+                
+                assigned_count = auto_assign_high_confidence_operations(session, pdf.id)
+                
+                assert assigned_count == 1
+                
+                # Verify operation was assigned
+                session.refresh(operation)
+                assert operation.type_id == op_type.id
+    
+    def test_auto_assign_high_confidence_operations_default_thresholds(self, temp_db):
+        """Test auto-assigning with default thresholds when config not available"""
+        with Session(get_engine(temp_db)) as session:
+            # Create a PDF
+            pdf = PDF(file_path="test.pdf", client_name="Test Client")
+            session.add(pdf)
+            session.commit()
+            
+            # Create an operation type
+            op_type = OperationType(name="Food", description="Food purchases")
+            session.add(op_type)
+            session.commit()
+            
+            # Create an unclassified operation
+            operation = OperationRow(
+                pdf_id=pdf.id,
+                description="AGROBAZAR CHISINAU",
+                amount_lei=100.0,
+                transaction_date="2023-01-01"
+            )
+            session.add(operation)
+            session.commit()
+            
+            # Mock get_classification_suggestions_for_pdf
+            with patch('sql_utils.get_classification_suggestions_for_pdf') as mock_get_suggestions:
+                mock_get_suggestions.return_value = [
+                    (operation, "Food", 96.0, "fuzzy")  # Above default 95% threshold
+                ]
+                
+                # Mock get_matcher to raise exception (no config available)
+                with patch('operations_matcher.get_matcher', side_effect=Exception("No config")):
+                    assigned_count = auto_assign_high_confidence_operations(session, pdf.id)
+                    
+                    assert assigned_count == 1
+                    
+                    # Verify operation was assigned
+                    session.refresh(operation)
+                    assert operation.type_id == op_type.id
+    
+    def test_auto_assign_all_high_confidence_operations_no_operations(self, temp_db):
+        """Test auto-assigning all operations when no unclassified operations exist"""
+        with Session(get_engine(temp_db)) as session:
+            # Create a PDF
+            pdf = PDF(file_path="test.pdf", client_name="Test Client")
+            session.add(pdf)
+            session.commit()
+            
+            # Mock get_operations_with_null_types to return empty list
+            with patch('sql_utils.get_operations_with_null_types', return_value=[]):
+                assigned_count = auto_assign_all_high_confidence_operations(session)
+                
+                assert assigned_count == 0
+    
+    def test_auto_assign_all_high_confidence_operations_with_operations(self, temp_db):
+        """Test auto-assigning all operations with unclassified operations"""
+        with Session(get_engine(temp_db)) as session:
+            # Create a PDF
+            pdf = PDF(file_path="test.pdf", client_name="Test Client")
+            session.add(pdf)
+            session.commit()
+            
+            # Create an operation type
+            op_type = OperationType(name="Food", description="Food purchases")
+            session.add(op_type)
+            session.commit()
+            
+            # Create an unclassified operation
+            operation = OperationRow(
+                pdf_id=pdf.id,
+                description="AGROBAZAR CHISINAU",
+                amount_lei=100.0,
+                transaction_date="2023-01-01"
+            )
+            session.add(operation)
+            session.commit()
+            
+            # Mock get_operations_with_null_types
+            with patch('sql_utils.get_operations_with_null_types', return_value=[operation]):
+                # Mock the operations matcher
+                with patch('operations_matcher.get_matcher') as mock_get_matcher:
+                    mock_matcher = MagicMock()
+                    mock_result = MagicMock()
+                    mock_result.type_name = "Food"
+                    mock_result.confidence = 100.0
+                    mock_result.method = "exact"
+                    mock_matcher.classify_operation.return_value = mock_result
+                    mock_get_matcher.return_value = mock_matcher
+                    
+                    assigned_count = auto_assign_all_high_confidence_operations(session)
+                    
+                    assert assigned_count == 1
+                    
+                    # Verify operation was assigned
+                    session.refresh(operation)
+                    assert operation.type_id == op_type.id
+    
+    def test_auto_assign_all_high_confidence_operations_exception(self, temp_db):
+        """Test auto-assigning all operations when matcher raises exception"""
+        with Session(get_engine(temp_db)) as session:
+            # Create a PDF
+            pdf = PDF(file_path="test.pdf", client_name="Test Client")
+            session.add(pdf)
+            session.commit()
+            
+            # Create an unclassified operation
+            operation = OperationRow(
+                pdf_id=pdf.id,
+                description="AGROBAZAR CHISINAU",
+                amount_lei=100.0,
+                transaction_date="2023-01-01"
+            )
+            session.add(operation)
+            session.commit()
+            
+            # Mock get_operations_with_null_types
+            with patch('sql_utils.get_operations_with_null_types', return_value=[operation]):
+                # Mock get_matcher to raise exception
+                with patch('operations_matcher.get_matcher', side_effect=Exception("Test error")):
+                    assigned_count = auto_assign_all_high_confidence_operations(session)
+                    
+                    assert assigned_count == 0
+                    
+                    # Verify operation was not assigned
+                    session.refresh(operation)
+                    assert operation.type_id is None
+
+
+class TestProcessAndStoreWithClassification:
+    """Test process_and_store_with_classification function"""
+    
+    def test_process_and_store_with_classification_success(self, temp_db):
+        """Test successful processing and storing with classification"""
+        # Create a temporary PDF file
+        with tempfile.NamedTemporaryFile(suffix='.pdf', delete=False) as tmp_pdf:
+            pdf_path = Path(tmp_pdf.name)
+        
+        try:
+            # Mock the PDF processing functions
+            with patch('sql_utils.process_pdf') as mock_process_pdf, \
+                 patch('sql_utils.extract_and_classify_operations') as mock_extract, \
+                 patch('sql_utils.get_high_confidence_suggestions') as mock_get_suggestions:
+                
+                # Mock PDF processing
+                mock_summary = PDFSummary(
+                    client_name="Test Client",
+                    account_number="MD1234567890",
+                    total_iesiri=1000.0,
+                    sold_initial=5000.0,
+                    sold_final=6000.0
+                )
+                mock_process_pdf.return_value = mock_summary
+                
+                # Mock operations extraction
+                mock_operations = [
+                    Operation(
+                        transaction_date="2023-01-01",
+                        processed_date="2023-01-01",
+                        description="AGROBAZAR CHISINAU",
+                        amount_lei=100.0
+                    )
+                ]
+                mock_suggestions = [
+                    MagicMock(
+                        operation_id=0,
+                        type_name="Food",
+                        confidence=95.0,
+                        method="fuzzy"
+                    )
+                ]
+                mock_extract.return_value = (mock_operations, mock_suggestions)
+                
+                # Mock high confidence suggestions
+                mock_get_suggestions.return_value = mock_suggestions
+                
+                # Process and store
+                pdf_id, stored_count, skipped_count, classification_results = process_and_store_with_classification(
+                    str(pdf_path), str(temp_db), skip_duplicates=True, auto_assign_high_confidence=True
+                )
+                
+                assert pdf_id is not None
+                assert stored_count == 1
+                assert skipped_count == 0
+                assert len(classification_results) == 0  # No operation types exist yet
+                
+        finally:
+            # Cleanup
+            pdf_path.unlink(missing_ok=True)
+
+
