@@ -18,6 +18,9 @@ def run_tests():
         "--cov=pdf_processor",
         "--cov=sql_utils", 
         "--cov=api",
+        "--cov=operations_matcher",
+        "--cov=rules_manager",
+        "--cov=rules_models",
         "--cov-report=term-missing",
         "--cov-report=html:htmlcov",
         "--cov-fail-under=80"
