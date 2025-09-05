@@ -24,7 +24,7 @@ from rules_manager import (
     # Usage tracking
     get_rule_statistics, get_category_statistics, log_rule_match,
     # Testing and validation
-    test_rule_pattern, validate_rule_pattern
+    run_rule_pattern_test
 )
 
 router = APIRouter(prefix="/api/rules", tags=["rules"])
@@ -351,7 +351,7 @@ def test_rule(
 ):
     """Test a rule pattern against test strings"""
     try:
-        results = test_rule_pattern(session, rule_id, test_request.test_strings)
+        results = run_rule_pattern_test(session, rule_id, test_request.test_strings)
         return [
             RuleTestResponse(**result) for result in results
         ]

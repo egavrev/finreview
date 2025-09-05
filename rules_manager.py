@@ -312,7 +312,7 @@ def get_category_statistics(session: Session, category_name: str) -> Dict[str, A
 
 
 # Rule Testing and Validation
-def test_rule_pattern(
+def run_rule_pattern_test(
     session: Session,
     rule_id: int,
     test_strings: List[str]

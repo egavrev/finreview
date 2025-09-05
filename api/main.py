@@ -23,7 +23,7 @@ from sql_utils import (
     get_duplicate_operations
 )
 from pdf_processor import PDFSummary, Operation
-from rules_api import router as rules_router
+from api.rules_api import router as rules_router
 from rules_models import MatchingRule, RuleCategory, RuleMatchLog
 
 app = FastAPI(title="Financial Review API", version="1.0.0")
