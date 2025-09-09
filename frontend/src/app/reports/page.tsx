@@ -58,6 +58,7 @@ interface TypeOperations {
     id: number
     name: string
     description: string | null
+    rule_comments: string[]
   }
   year: number
   month: number
@@ -483,6 +484,18 @@ export default function ReportsPage() {
                 <CardDescription className="text-gray-600">
                   {showAllOperations ? 'All operations' : 'Top 5 operations by amount'}
                 </CardDescription>
+                {typeOperations.type.rule_comments && typeOperations.type.rule_comments.length > 0 && (
+                  <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                    <h4 className="text-sm font-medium text-blue-900 mb-2">Rule Comments:</h4>
+                    <div className="space-y-1">
+                      {typeOperations.type.rule_comments.map((comment, index) => (
+                        <p key={index} className="text-sm text-blue-800">
+                          • {comment}
+                        </p>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </CardHeader>
               <CardContent>
                 <div className="overflow-hidden rounded-lg border border-gray-200">

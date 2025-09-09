@@ -169,7 +169,7 @@ class TestMatchingRuleManagement:
     def test_create_matching_rule(self, session, sample_categories):
         """Test creating a new matching rule"""
         rule = create_matching_rule(
-            session, "exact", "Food", "TEST PATTERN", 90, 75, "test_user"
+            session, "exact", "Food", "TEST PATTERN", 90, 75, created_by="test_user"
         )
         
         assert rule.id is not None

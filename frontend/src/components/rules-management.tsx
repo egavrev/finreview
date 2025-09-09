@@ -29,6 +29,7 @@ interface MatchingRule {
   weight: number;
   priority: number;
   is_active: boolean;
+  comments?: string;
   created_by?: string;
   created_at: string;
   updated_at: string;
@@ -66,6 +67,7 @@ const RulesManagement: React.FC = () => {
     pattern: '',
     weight: 85,
     priority: 0,
+    comments: '',
   });
 
   const [newCategory, setNewCategory] = useState({
@@ -115,7 +117,7 @@ const RulesManagement: React.FC = () => {
       if (response.ok) {
         await fetchRules();
         setShowCreateRule(false);
-        setNewRule({ rule_type: 'keyword', category: '', pattern: '', weight: 85, priority: 0 });
+        setNewRule({ rule_type: 'keyword', category: '', pattern: '', weight: 85, priority: 0, comments: '' });
       }
     } catch (error) {
       console.error('Error creating rule:', error);
@@ -182,7 +184,7 @@ const RulesManagement: React.FC = () => {
       if (response.ok) {
         await fetchRules();
         setEditingRule(null);
-        setNewRule({ rule_type: 'keyword', category: '', pattern: '', weight: 85, priority: 0 });
+        setNewRule({ rule_type: 'keyword', category: '', pattern: '', weight: 85, priority: 0, comments: '' });
       }
     } catch (error) {
       console.error('Error updating rule:', error);
@@ -372,6 +374,7 @@ const RulesManagement: React.FC = () => {
                       <TableHead>Type</TableHead>
                       <TableHead>Category</TableHead>
                       <TableHead>Pattern</TableHead>
+                      <TableHead>Comments</TableHead>
                       <TableHead>Weight</TableHead>
                       <TableHead>Priority</TableHead>
                       <TableHead>Usage</TableHead>
@@ -388,6 +391,9 @@ const RulesManagement: React.FC = () => {
                         </TableCell>
                         <TableCell>{rule.category}</TableCell>
                         <TableCell className="font-mono text-sm">{rule.pattern}</TableCell>
+                        <TableCell className="max-w-xs truncate" title={rule.comments || ''}>
+                          {rule.comments || '-'}
+                        </TableCell>
                         <TableCell>{rule.weight}</TableCell>
                         <TableCell>{rule.priority}</TableCell>
                         <TableCell>
@@ -421,6 +427,7 @@ const RulesManagement: React.FC = () => {
                                   pattern: rule.pattern,
                                   weight: rule.weight,
                                   priority: rule.priority,
+                                  comments: rule.comments || '',
                                 });
                               }}
                             >
@@ -452,7 +459,7 @@ const RulesManagement: React.FC = () => {
         if (!open) {
           setShowCreateRule(false);
           setEditingRule(null);
-          setNewRule({ rule_type: 'keyword', category: '', pattern: '', weight: 85, priority: 0 });
+          setNewRule({ rule_type: 'keyword', category: '', pattern: '', weight: 85, priority: 0, comments: '' });
         }
       }}>
         <DialogContent className="max-w-md">
@@ -499,6 +506,15 @@ const RulesManagement: React.FC = () => {
                 placeholder={newRule.rule_type === 'pattern' ? 'Enter regex pattern' : 'Enter pattern'}
               />
             </div>
+            <div>
+              <Label htmlFor="comments">Comments (Optional)</Label>
+              <Input
+                id="comments"
+                value={newRule.comments}
+                onChange={(e) => setNewRule({ ...newRule, comments: e.target.value })}
+                placeholder="Enter comments or notes for this rule"
+              />
+            </div>
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label htmlFor="weight">Weight (0-100)</Label>
@@ -525,7 +541,7 @@ const RulesManagement: React.FC = () => {
               <Button variant="outline" onClick={() => {
                 setShowCreateRule(false);
                 setEditingRule(null);
-                setNewRule({ rule_type: 'keyword', category: '', pattern: '', weight: 85, priority: 0 });
+                setNewRule({ rule_type: 'keyword', category: '', pattern: '', weight: 85, priority: 0, comments: '' });
               }}>
                 Cancel
               </Button>

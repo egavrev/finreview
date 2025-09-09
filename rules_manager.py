@@ -100,6 +100,7 @@ def create_matching_rule(
     pattern: str,
     weight: int = 85,
     priority: int = 0,
+    comments: Optional[str] = None,
     created_by: Optional[str] = None
 ) -> MatchingRule:
     """Create a new matching rule"""
@@ -109,6 +110,7 @@ def create_matching_rule(
         pattern=pattern,
         weight=weight,
         priority=priority,
+        comments=comments,
         created_by=created_by
     )
     session.add(rule)
@@ -150,6 +152,7 @@ def update_matching_rule(
     pattern: Optional[str] = None,
     weight: Optional[int] = None,
     priority: Optional[int] = None,
+    comments: Optional[str] = None,
     is_active: Optional[bool] = None
 ) -> Optional[MatchingRule]:
     """Update a matching rule"""
@@ -165,6 +168,8 @@ def update_matching_rule(
             rule.weight = weight
         if priority is not None:
             rule.priority = priority
+        if comments is not None:
+            rule.comments = comments
         if is_active is not None:
             rule.is_active = is_active
         

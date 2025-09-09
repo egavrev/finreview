@@ -60,6 +60,7 @@ class MatchingRuleCreate(BaseModel):
     pattern: str
     weight: int = 85
     priority: int = 0
+    comments: Optional[str] = None
     created_by: Optional[str] = None
 
 
@@ -69,6 +70,7 @@ class MatchingRuleUpdate(BaseModel):
     pattern: Optional[str] = None
     weight: Optional[int] = None
     priority: Optional[int] = None
+    comments: Optional[str] = None
     is_active: Optional[bool] = None
 
 
@@ -80,6 +82,7 @@ class MatchingRuleResponse(BaseModel):
     weight: int
     priority: int
     is_active: bool
+    comments: Optional[str] = None
     created_by: Optional[str] = None
     created_at: str
     updated_at: str
@@ -242,7 +245,7 @@ def create_rule(
         
         db_rule = create_matching_rule(
             session, rule.rule_type, rule.category, rule.pattern,
-            rule.weight, rule.priority, rule.created_by
+            rule.weight, rule.priority, rule.comments, rule.created_by
         )
         return MatchingRuleResponse(**db_rule.__dict__)
     except Exception as e:
@@ -304,6 +307,7 @@ def update_rule(
             pattern=rule_update.pattern,
             weight=rule_update.weight,
             priority=rule_update.priority,
+            comments=rule_update.comments,
             is_active=rule_update.is_active
         )
         if not updated_rule:

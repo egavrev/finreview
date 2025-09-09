@@ -851,6 +851,26 @@ def get_available_months(session: Session) -> List[dict]:
     ]
 
 
+def get_rule_comments_for_type(session: Session, type_name: str) -> List[str]:
+    """
+    Get comments from matching rules for a given operation type
+    
+    Args:
+        session: Database session
+        type_name: Operation type name
+        
+    Returns:
+        List of non-empty comments from matching rules
+    """
+    try:
+        from rules_manager import get_matching_rules
+        rules = get_matching_rules(session, category=type_name, active_only=True)
+        comments = [rule.comments for rule in rules if rule.comments and rule.comments.strip()]
+        return comments
+    except Exception:
+        return []
+
+
 def get_operations_by_type_for_month(
     session: Session,
     type_id: int,
@@ -880,6 +900,9 @@ def get_operations_by_type_for_month(
     if not op_type:
         return {"error": "Operation type not found"}
     
+    # Get rule comments for this type
+    rule_comments = get_rule_comments_for_type(session, op_type.name)
+    
     # Get operations for the type and month
     query = select(OperationRow).where(
         OperationRow.type_id == type_id,
@@ -904,6 +927,7 @@ def get_operations_by_type_for_month(
             "id": op_type.id,
             "name": op_type.name,
             "description": op_type.description,
+            "rule_comments": rule_comments,
         },
         "year": year,
         "month": month,

@@ -11,6 +11,7 @@ class MatchingRule(SQLModel, table=True):
     weight: int = Field(default=85)     # Confidence weight (0-100)
     is_active: bool = Field(default=True, index=True)
     priority: int = Field(default=0, index=True)  # Higher priority rules are checked first
+    comments: Optional[str] = None  # Optional comments/notes for the rule
     created_by: Optional[str] = None
     created_at: Optional[str] = Field(default_factory=lambda: datetime.now().isoformat())
     updated_at: Optional[str] = Field(default_factory=lambda: datetime.now().isoformat())
