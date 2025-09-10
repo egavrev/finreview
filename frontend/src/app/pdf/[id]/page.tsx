@@ -7,6 +7,8 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { API_ENDPOINTS } from '@/lib/api'
+import { ProtectedRoute } from '@/components/ProtectedRoute'
+import { useAuth } from '@/contexts/AuthContext'
 
 interface PDF {
   id: number
@@ -36,14 +38,21 @@ interface PDFDetails {
 export default function PDFDetailsPage({ params }: { params: { id: string } }) {
   const [pdfDetails, setPdfDetails] = useState<PDFDetails | null>(null)
   const [loading, setLoading] = useState(true)
+  const { token } = useAuth()
 
   useEffect(() => {
-    fetchPDFDetails()
-  }, [params.id])
+    if (token) {
+      fetchPDFDetails()
+    }
+  }, [params.id, token])
 
   const fetchPDFDetails = async () => {
     try {
-      const response = await fetch(API_ENDPOINTS.PDF_BY_ID(Number(params.id)))
+      const response = await fetch(API_ENDPOINTS.PDF_BY_ID(Number(params.id)), {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      })
       if (response.ok) {
         const data = await response.json()
         setPdfDetails(data)
@@ -93,7 +102,8 @@ export default function PDFDetailsPage({ params }: { params: { id: string } }) {
   const { pdf, operations } = pdfDetails
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
+    <ProtectedRoute>
+      <div className="container mx-auto p-6 space-y-6">
       {/* Header */}
       <div className="flex items-center space-x-4">
         <Link href="/">
@@ -179,6 +189,7 @@ export default function PDFDetailsPage({ params }: { params: { id: string } }) {
           </Table>
         </CardContent>
       </Card>
-    </div>
+      </div>
+    </ProtectedRoute>
   )
 }

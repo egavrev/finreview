@@ -10,6 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { ChevronDown, ChevronRight, Plus, Edit, Trash2, TestTube, BarChart3 } from 'lucide-react';
 import { API_ENDPOINTS } from '@/lib/api';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface RuleCategory {
   id: number;
@@ -50,6 +51,7 @@ const RulesManagement: React.FC = () => {
   const [categories, setCategories] = useState<RuleCategory[]>([]);
   const [rules, setRules] = useState<MatchingRule[]>([]);
   const [loading, setLoading] = useState(false);
+  const { token } = useAuth();
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [selectedType, setSelectedType] = useState<string>('all');
   const [showCreateRule, setShowCreateRule] = useState(false);
@@ -77,13 +79,19 @@ const RulesManagement: React.FC = () => {
   });
 
   useEffect(() => {
-    fetchCategories();
-    fetchRules();
-  }, []);
+    if (token) {
+      fetchCategories();
+      fetchRules();
+    }
+  }, [token]);
 
   const fetchCategories = async () => {
     try {
-      const response = await fetch(API_ENDPOINTS.RULES.CATEGORIES);
+      const response = await fetch(API_ENDPOINTS.RULES.CATEGORIES, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
       if (response.ok) {
         const data = await response.json();
         setCategories(data);
@@ -95,13 +103,17 @@ const RulesManagement: React.FC = () => {
 
   const fetchRules = async () => {
     try {
-      const response = await fetch(API_ENDPOINTS.RULES.RULES);
+      const response = await fetch(API_ENDPOINTS.RULES.RULES, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      });
       if (response.ok) {
         const data = await response.json();
         setRules(data);
       }
     } catch (error) {
-        console.error('Error fetching rules:', error);
+      console.error('Error fetching rules:', error);
     }
   };
 
@@ -110,7 +122,10 @@ const RulesManagement: React.FC = () => {
       setLoading(true);
       const response = await fetch(API_ENDPOINTS.RULES.RULES, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
         body: JSON.stringify(newRule),
       });
 
@@ -131,7 +146,10 @@ const RulesManagement: React.FC = () => {
       setLoading(true);
       const response = await fetch(API_ENDPOINTS.RULES.CATEGORIES, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
         body: JSON.stringify(newCategory),
       });
 
@@ -154,7 +172,10 @@ const RulesManagement: React.FC = () => {
       setLoading(true);
       const response = await fetch(API_ENDPOINTS.RULES.CATEGORY_BY_ID(editingCategory.id), {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
         body: JSON.stringify(newCategory),
       });
 
@@ -177,7 +198,10 @@ const RulesManagement: React.FC = () => {
       setLoading(true);
       const response = await fetch(API_ENDPOINTS.RULES.RULE_BY_ID(editingRule.id), {
         method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
         body: JSON.stringify(newRule),
       });
 
@@ -199,6 +223,9 @@ const RulesManagement: React.FC = () => {
     try {
       const response = await fetch(API_ENDPOINTS.RULES.RULE_BY_ID(ruleId), {
         method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
       });
 
       if (response.ok) {
@@ -213,7 +240,10 @@ const RulesManagement: React.FC = () => {
     try {
       const response = await fetch(API_ENDPOINTS.RULES.RULE_TEST(rule.id), {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
         body: JSON.stringify({ rule_id: rule.id, test_strings: testStrings }),
       });
 

@@ -10,6 +10,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Label } from '@/components/ui/label'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { API_ENDPOINTS } from '@/lib/api'
+import { ProtectedRoute } from '@/components/ProtectedRoute'
+import { useAuth } from '@/contexts/AuthContext'
 
 interface Operation {
   id: number
@@ -31,7 +33,8 @@ interface OperationType {
 export default function OperationsPage() {
   const [operations, setOperations] = useState<Operation[]>([])
   const [operationTypes, setOperationTypes] = useState<OperationType[]>([])
-  const [loading, setLoading] = useState(2) // Count of pending requests
+  const [loading, setLoading] = useState(true) // Loading state
+  const { token, isLoading: authLoading } = useAuth()
   const [assignDialogOpen, setAssignDialogOpen] = useState(false)
   const [newTypeDialogOpen, setNewTypeDialogOpen] = useState(false)
   const [selectedOperation, setSelectedOperation] = useState<Operation | null>(null)
@@ -58,35 +61,46 @@ export default function OperationsPage() {
   const [rulesMatcherResults, setRulesMatcherResults] = useState<any>(null)
 
   useEffect(() => {
-    fetchOperations()
-    fetchOperationTypes()
-  }, [])
+    if (!authLoading) {
+      if (token) {
+        setLoading(true)
+        Promise.all([fetchOperations(), fetchOperationTypes()])
+          .finally(() => setLoading(false))
+      } else {
+        setLoading(false)
+      }
+    }
+  }, [token, authLoading])
 
   const fetchOperations = async () => {
     try {
-      const response = await fetch(API_ENDPOINTS.OPERATIONS_NULL_TYPES)
+      const response = await fetch(API_ENDPOINTS.OPERATIONS_NULL_TYPES, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      })
       if (response.ok) {
         const data = await response.json()
         setOperations(data)
       }
     } catch (error) {
       console.error('Error fetching operations:', error)
-    } finally {
-      setLoading(prev => prev - 1)
     }
   }
 
   const fetchOperationTypes = async () => {
     try {
-      const response = await fetch(API_ENDPOINTS.OPERATION_TYPES)
+      const response = await fetch(API_ENDPOINTS.OPERATION_TYPES, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      })
       if (response.ok) {
         const data = await response.json()
         setOperationTypes(data)
       }
     } catch (error) {
       console.error('Error fetching operation types:', error)
-    } finally {
-      setLoading(prev => prev - 1)
     }
   }
 
@@ -99,6 +113,7 @@ export default function OperationsPage() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded',
+          'Authorization': `Bearer ${token}`,
         },
         body: `type_id=${selectedTypeId}`,
       })
@@ -125,6 +140,7 @@ export default function OperationsPage() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded',
+          'Authorization': `Bearer ${token}`,
         },
         body: `name=${encodeURIComponent(newTypeName)}&description=${encodeURIComponent(newTypeDescription)}`,
       })
@@ -179,6 +195,7 @@ export default function OperationsPage() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded',
+          'Authorization': `Bearer ${token}`,
         },
         body: formData.toString(),
       })
@@ -237,7 +254,11 @@ export default function OperationsPage() {
       const [year, month] = selectedMonth.split('-').map(Number)
       console.log('Fetching operations for:', { year, month, selectedMonth })
       
-      const response = await fetch(API_ENDPOINTS.OPERATIONS_BY_MONTH(year, month))
+      const response = await fetch(API_ENDPOINTS.OPERATIONS_BY_MONTH(year, month), {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      })
       console.log('Response status:', response.status)
       
       if (response.ok) {
@@ -268,6 +289,9 @@ export default function OperationsPage() {
     try {
       const response = await fetch(API_ENDPOINTS.DELETE_OPERATION(operationToDelete.id), {
         method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
       })
 
       if (response.ok) {
@@ -308,7 +332,11 @@ export default function OperationsPage() {
     
     try {
       // First, get all operations without types
-      const response = await fetch(API_ENDPOINTS.OPERATIONS_NULL_TYPES)
+      const response = await fetch(API_ENDPOINTS.OPERATIONS_NULL_TYPES, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      })
       if (response.ok) {
         const unclassifiedOps = await response.json()
         
@@ -326,7 +354,10 @@ export default function OperationsPage() {
         // Run rules matcher on all unclassified operations
         const matcherResponse = await fetch(API_ENDPOINTS.RULES.RUN_MATCHER, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`,
+          },
           body: JSON.stringify({ 
             operation_ids: unclassifiedOps.map((op: any) => op.id),
             auto_assign_high_confidence: true 
@@ -371,7 +402,8 @@ export default function OperationsPage() {
   }
 
   return (
-    <div className="p-8">
+    <ProtectedRoute>
+      <div className="p-8">
       <div className="mb-8">
         <h1 className="text-3xl font-bold tracking-tight">Operations</h1>
         <p className="text-muted-foreground">
@@ -875,6 +907,7 @@ export default function OperationsPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+      </div>
+    </ProtectedRoute>
   )
 }

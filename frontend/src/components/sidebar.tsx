@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useState } from 'react'
 import { cn } from '@/lib/utils'
+import { useAuth } from '@/contexts/AuthContext'
 import { 
   LayoutDashboard, 
   Activity, 
@@ -11,7 +12,9 @@ import {
   FolderOpen,
   Menu,
   X,
-  Settings
+  Settings,
+  LogOut,
+  User
 } from 'lucide-react'
 
 const menuItems = [
@@ -45,6 +48,7 @@ const menuItems = [
 export function Sidebar() {
   const pathname = usePathname()
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
+  const { user, logout, isAuthenticated } = useAuth()
 
   const toggleMobileMenu = () => {
     setIsMobileMenuOpen(!isMobileMenuOpen)
@@ -118,6 +122,36 @@ export function Sidebar() {
             )
           })}
         </nav>
+        
+        {/* User Section */}
+        {isAuthenticated && user && (
+          <div className="border-t border-gray-700 p-3">
+            <div className="flex items-center space-x-3 mb-3">
+              {user.picture ? (
+                <img
+                  src={user.picture}
+                  alt={user.name}
+                  className="w-8 h-8 rounded-full"
+                />
+              ) : (
+                <div className="w-8 h-8 rounded-full bg-gray-600 flex items-center justify-center">
+                  <User className="w-4 h-4 text-white" />
+                </div>
+              )}
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-white truncate">{user.name}</p>
+                <p className="text-xs text-gray-400 truncate">{user.email}</p>
+              </div>
+            </div>
+            <button
+              onClick={logout}
+              className="flex items-center w-full px-3 py-2 text-sm text-gray-300 hover:bg-gray-700 hover:text-white rounded-md transition-colors"
+            >
+              <LogOut className="mr-3 h-4 w-4" />
+              Sign Out
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Desktop Sidebar */}
@@ -145,6 +179,36 @@ export function Sidebar() {
             )
           })}
         </nav>
+        
+        {/* User Section */}
+        {isAuthenticated && user && (
+          <div className="border-t border-gray-700 p-3">
+            <div className="flex items-center space-x-3 mb-3">
+              {user.picture ? (
+                <img
+                  src={user.picture}
+                  alt={user.name}
+                  className="w-8 h-8 rounded-full"
+                />
+              ) : (
+                <div className="w-8 h-8 rounded-full bg-gray-600 flex items-center justify-center">
+                  <User className="w-4 h-4 text-white" />
+                </div>
+              )}
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-white truncate">{user.name}</p>
+                <p className="text-xs text-gray-400 truncate">{user.email}</p>
+              </div>
+            </div>
+            <button
+              onClick={logout}
+              className="flex items-center w-full px-3 py-2 text-sm text-gray-300 hover:bg-gray-700 hover:text-white rounded-md transition-colors"
+            >
+              <LogOut className="mr-3 h-4 w-4" />
+              Sign Out
+            </button>
+          </div>
+        )}
       </div>
     </>
   )

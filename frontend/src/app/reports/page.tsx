@@ -9,6 +9,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { PieChart as RechartsPieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts'
 import { format, parseISO } from 'date-fns'
 import { API_ENDPOINTS } from '@/lib/api'
+import { ProtectedRoute } from '@/components/ProtectedRoute'
+import { useAuth } from '@/contexts/AuthContext'
 
 interface AvailableMonth {
   year: number
@@ -80,11 +82,14 @@ export default function ReportsPage() {
   const [typeOperations, setTypeOperations] = useState<TypeOperations | null>(null)
   const [showAllOperations, setShowAllOperations] = useState(false)
   const [selectedPieSlice, setSelectedPieSlice] = useState<string | null>(null)
+  const { token } = useAuth()
 
   // Fetch available months on component mount
   useEffect(() => {
-    fetchAvailableMonths()
-  }, [])
+    if (token) {
+      fetchAvailableMonths()
+    }
+  }, [token])
 
   // Fetch report data when month changes
   useEffect(() => {
@@ -100,7 +105,11 @@ export default function ReportsPage() {
 
   const fetchAvailableMonths = async () => {
     try {
-      const response = await fetch(API_ENDPOINTS.AVAILABLE_MONTHS)
+      const response = await fetch(API_ENDPOINTS.AVAILABLE_MONTHS, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      })
       if (response.ok) {
         const months = await response.json()
         setAvailableMonths(months)
@@ -124,7 +133,11 @@ export default function ReportsPage() {
     setLoading(true)
     try {
       const [year, month] = selectedMonth.split('-').map(Number)
-      const response = await fetch(API_ENDPOINTS.MONTHLY_REPORT(year, month))
+      const response = await fetch(API_ENDPOINTS.MONTHLY_REPORT(year, month), {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      })
       if (response.ok) {
         const data = await response.json()
         setReportData(data)
@@ -147,7 +160,12 @@ export default function ReportsPage() {
     try {
       const [year, month] = selectedMonth.split('-').map(Number)
       const response = await fetch(
-        API_ENDPOINTS.MONTHLY_OPERATIONS_BY_TYPE(year, month, typeId) + `?limit=${limit}&offset=${offset}`
+        API_ENDPOINTS.MONTHLY_OPERATIONS_BY_TYPE(year, month, typeId) + `?limit=${limit}&offset=${offset}`,
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+          },
+        }
       )
       if (response.ok) {
         const data = await response.json()
@@ -329,7 +347,8 @@ export default function ReportsPage() {
     : reportData?.type_groups || []
 
   return (
-    <div className="p-6 lg:p-8 space-y-6 max-w-7xl mx-auto">
+    <ProtectedRoute>
+      <div className="p-6 lg:p-8 space-y-6 max-w-7xl mx-auto">
       {/* Compact Header with Title and Month Selection */}
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
         <div>
@@ -578,6 +597,7 @@ export default function ReportsPage() {
           </CardContent>
         </Card>
       )}
-    </div>
+      </div>
+    </ProtectedRoute>
   )
 }

@@ -6,6 +6,8 @@ import Link from 'next/link'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { API_ENDPOINTS } from '@/lib/api'
+import { ProtectedRoute } from '@/components/ProtectedRoute'
+import { useAuth } from '@/contexts/AuthContext'
 
 interface Statistics {
   total_pdfs: number
@@ -38,15 +40,22 @@ export const formatCurrency = (amount: number | null) => {
 export default function Dashboard() {
   const [statistics, setStatistics] = useState<Statistics | null>(null)
   const [pdfs, setPdfs] = useState<PDF[]>([])
+  const { token } = useAuth()
 
   useEffect(() => {
-    fetchStatistics()
-    fetchPDFs()
-  }, [])
+    if (token) {
+      fetchStatistics()
+      fetchPDFs()
+    }
+  }, [token])
 
   const fetchStatistics = async () => {
     try {
-      const response = await fetch(API_ENDPOINTS.STATISTICS)
+      const response = await fetch(API_ENDPOINTS.STATISTICS, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      })
       const data = await response.json()
       setStatistics(data)
     } catch (error) {
@@ -56,7 +65,11 @@ export default function Dashboard() {
 
   const fetchPDFs = async () => {
     try {
-      const response = await fetch(API_ENDPOINTS.PDFS)
+      const response = await fetch(API_ENDPOINTS.PDFS, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      })
       const data = await response.json()
       setPdfs(data)
     } catch (error) {
@@ -65,14 +78,15 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="p-8 space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">Dashboard</h1>
-          <p className="text-muted-foreground">Overview of your financial data and statistics</p>
+    <ProtectedRoute>
+      <div className="p-8 space-y-6">
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold">Dashboard</h1>
+            <p className="text-muted-foreground">Overview of your financial data and statistics</p>
+          </div>
         </div>
-      </div>
 
       {/* Statistics Cards */}
       {statistics && (
@@ -167,6 +181,7 @@ export default function Dashboard() {
           </Table>
         </CardContent>
       </Card>
-    </div>
+      </div>
+    </ProtectedRoute>
   )
 }

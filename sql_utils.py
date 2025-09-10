@@ -1,11 +1,22 @@
 from pathlib import Path
 from typing import Iterable, List, Optional, Tuple
 import hashlib
+from datetime import datetime
 
 from sqlmodel import SQLModel, Field, create_engine, Session, select
 from sqlalchemy import event, delete
 
 from pdf_processor import PDFSummary, Operation, process_pdf, extract_card_operations, extract_and_classify_operations, get_high_confidence_suggestions, get_medium_confidence_suggestions
+
+
+class User(SQLModel, table=True):
+    id: Optional[int] = Field(default=None, primary_key=True)
+    google_id: str = Field(unique=True, index=True)
+    email: str = Field(unique=True, index=True)
+    name: str
+    picture: Optional[str] = None
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+    last_login: Optional[datetime] = None
 
 
 class PDF(SQLModel, table=True):
@@ -17,6 +28,7 @@ class PDF(SQLModel, table=True):
     sold_initial: Optional[float] = None
     sold_final: Optional[float] = None
     created_at: Optional[str] = Field(default=None)  # could be set by app if needed
+    user_id: Optional[int] = Field(default=None, foreign_key="user.id")  # Link to user
 
 
 class OperationType(SQLModel, table=True):
@@ -949,5 +961,64 @@ def get_operations_by_type_for_month(
             "has_more": (offset + limit) < total_count
         }
     }
+
+
+# User management functions
+def create_or_update_user(
+    session: Session,
+    google_id: str,
+    email: str,
+    name: str,
+    picture: Optional[str] = None,
+) -> User:
+    """Create a new user or update existing user's information"""
+    existing_user = session.exec(select(User).where(User.google_id == google_id)).first()
+    
+    if existing_user:
+        # Update existing user
+        existing_user.email = email
+        existing_user.name = name
+        existing_user.picture = picture
+        existing_user.last_login = datetime.utcnow()
+        session.add(existing_user)
+        session.commit()
+        session.refresh(existing_user)
+        return existing_user
+    else:
+        # Create new user
+        user = User(
+            google_id=google_id,
+            email=email,
+            name=name,
+            picture=picture,
+            last_login=datetime.utcnow()
+        )
+        session.add(user)
+        session.commit()
+        session.refresh(user)
+        return user
+
+
+def get_user_by_google_id(session: Session, google_id: str) -> Optional[User]:
+    """Get user by Google ID"""
+    return session.exec(select(User).where(User.google_id == google_id)).first()
+
+
+def get_user_by_email(session: Session, email: str) -> Optional[User]:
+    """Get user by email"""
+    return session.exec(select(User).where(User.email == email)).first()
+
+
+def get_user_by_id(session: Session, user_id: int) -> Optional[User]:
+    """Get user by ID"""
+    user = session.exec(select(User).where(User.id == user_id)).first()
+    return user
+
+
+def check_email_access(email: str) -> bool:
+    """Check if email is in the allowed whitelist"""
+    import os
+    allowed_emails = os.getenv("ALLOWED_EMAILS", "").split(",")
+    return email.strip() in [e.strip() for e in allowed_emails if e.strip()]
 
 

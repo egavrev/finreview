@@ -5,6 +5,8 @@ import { Upload, FileText, Trash2, AlertTriangle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { API_ENDPOINTS } from '@/lib/api'
+import { ProtectedRoute } from '@/components/ProtectedRoute'
+import { useAuth } from '@/contexts/AuthContext'
 
 interface PDF {
   id: number
@@ -25,14 +27,21 @@ export default function FilesPage() {
   const [uploadResult, setUploadResult] = useState<any>(null)
   const [deleting, setDeleting] = useState<number | null>(null)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState<number | null>(null)
+  const { token } = useAuth()
 
   useEffect(() => {
-    fetchPDFs()
-  }, [])
+    if (token) {
+      fetchPDFs()
+    }
+  }, [token])
 
   const fetchPDFs = async () => {
     try {
-      const response = await fetch(API_ENDPOINTS.PDFS)
+      const response = await fetch(API_ENDPOINTS.PDFS, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
+      })
       if (response.ok) {
         const data = await response.json()
         setPdfs(data || [])
@@ -64,6 +73,9 @@ export default function FilesPage() {
     try {
       const response = await fetch(API_ENDPOINTS.UPLOAD_PDF, {
         method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
         body: formData,
       })
 
@@ -96,6 +108,9 @@ export default function FilesPage() {
     try {
       const response = await fetch(API_ENDPOINTS.DELETE_PDF(pdfId), {
         method: 'DELETE',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+        },
       })
 
       if (response.ok) {
@@ -123,7 +138,8 @@ export default function FilesPage() {
   }
 
   return (
-    <div className="p-8 space-y-6">
+    <ProtectedRoute>
+      <div className="p-8 space-y-6">
       <div className="mb-8">
         <h1 className="text-3xl font-bold tracking-tight">Files</h1>
         <p className="text-muted-foreground">
@@ -325,6 +341,7 @@ export default function FilesPage() {
           </p>
         </CardContent>
       </Card>
-    </div>
+      </div>
+    </ProtectedRoute>
   )
 }

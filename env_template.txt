@@ -1,0 +1,11 @@
+# Google OAuth 2.0 Credentials (get these from Google Cloud Console)
+GOOGLE_CLIENT_ID=your_client_id_from_google
+GOOGLE_CLIENT_SECRET=your_client_secret_from_google
+GOOGLE_REDIRECT_URI=http://localhost:8000/auth/google/callback
+
+# JWT Configuration
+JWT_SECRET_KEY=O5vJaAW2n9JID1DzC5DHkVKLKMarA4-JggXwGcywSJA
+JWT_EXPIRATION_HOURS=24
+
+# Email Whitelist (replace with your actual emails)
+ALLOWED_EMAILS=your.email@gmail.com,your.wife.email@gmail.com

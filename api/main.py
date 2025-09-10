@@ -1,6 +1,7 @@
-from fastapi import FastAPI, UploadFile, File, HTTPException, Depends, Form
+from fastapi import FastAPI, UploadFile, File, HTTPException, Depends, Form, Query
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, RedirectResponse
+from fastapi.security import HTTPAuthorizationCredentials
 from sqlmodel import Session, select
 from sqlalchemy import delete
 from typing import List, Optional
@@ -9,6 +10,10 @@ from pathlib import Path
 import tempfile
 import shutil
 import os
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 import sys
 from pathlib import Path
@@ -20,11 +25,12 @@ from sql_utils import (
     get_operation_type_by_id, update_operation_type, delete_operation_type,
     assign_operation_type, get_operations_by_type, get_operations_with_types,
     get_operations_with_null_types, get_operations_by_month, delete_operation, get_available_months, get_monthly_report_data, get_operations_by_type_for_month,
-    get_duplicate_operations
+    get_duplicate_operations, User
 )
 from pdf_processor import PDFSummary, Operation
 from api.rules_api import router as rules_router
 from rules_models import MatchingRule, RuleCategory, RuleMatchLog
+from auth import authenticate_google_user, get_current_user, get_google_oauth_url, AuthError, security
 
 app = FastAPI(title="Financial Review API", version="1.0.0")
 
@@ -54,10 +60,69 @@ def get_session():
 async def root():
     return {"message": "Financial Review API"}
 
+
+# Authentication endpoints
+@app.get("/auth/google")
+async def google_auth():
+    """Initiate Google OAuth flow"""
+    auth_url = get_google_oauth_url()
+    return {"auth_url": auth_url}
+
+
+@app.get("/auth/google/callback")
+async def google_callback(code: str = Query(...)):
+    """Handle Google OAuth callback"""
+    try:
+        result = await authenticate_google_user(code, str(DB_PATH))
+        
+        # Redirect to frontend with token in URL parameter
+        token = result["access_token"]
+        frontend_url = "http://localhost:3000"
+        redirect_url = f"{frontend_url}/auth/callback?token={token}"
+        
+        return RedirectResponse(url=redirect_url)
+        
+    except AuthError as e:
+        # Redirect to frontend with error
+        frontend_url = "http://localhost:3000"
+        error_url = f"{frontend_url}/auth/error?message={str(e)}"
+        return RedirectResponse(url=error_url)
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        # Redirect to frontend with error
+        frontend_url = "http://localhost:3000"
+        error_url = f"{frontend_url}/auth/error?message=Authentication failed"
+        return RedirectResponse(url=error_url)
+
+
+def get_current_user_with_db_path(credentials: HTTPAuthorizationCredentials = Depends(security)):
+    """Dependency to get current user with correct database path"""
+    return get_current_user(credentials, db_path=str(DB_PATH))
+
+@app.get("/auth/me")
+async def get_current_user_info(current_user: User = Depends(get_current_user_with_db_path)):
+    """Get current user information"""
+    return {
+        "id": current_user.id,
+        "email": current_user.email,
+        "name": current_user.name,
+        "picture": current_user.picture,
+        "created_at": current_user.created_at.isoformat(),
+        "last_login": current_user.last_login.isoformat() if current_user.last_login else None
+    }
+
+
+@app.post("/auth/logout")
+async def logout():
+    """Logout endpoint (client should remove token)"""
+    return {"message": "Logged out successfully"}
+
 @app.post("/upload-pdf")
 async def upload_pdf(
     file: UploadFile = File(...),
-    session: Session = Depends(get_session)
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user_with_db_path)
 ):
     """Upload and process a PDF file with deduplication"""
     if not file.filename.lower().endswith('.pdf'):
@@ -101,7 +166,10 @@ async def upload_pdf(
         os.unlink(tmp_path)
 
 @app.get("/pdfs")
-async def list_pdfs(session: Session = Depends(get_session)):
+async def list_pdfs(
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user_with_db_path)
+):
     """List all processed PDFs with operation counts"""
     pdfs = session.exec(select(PDF).order_by(PDF.id.desc())).all()
     
@@ -125,7 +193,11 @@ async def list_pdfs(session: Session = Depends(get_session)):
     return result
 
 @app.get("/pdfs/{pdf_id}")
-async def get_pdf_details(pdf_id: int, session: Session = Depends(get_session)):
+async def get_pdf_details(
+    pdf_id: int, 
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user_with_db_path)
+):
     """Get details of a specific PDF"""
     pdf = session.exec(select(PDF).where(PDF.id == pdf_id)).first()
     if not pdf:
@@ -159,7 +231,11 @@ async def get_pdf_details(pdf_id: int, session: Session = Depends(get_session)):
 
 
 @app.delete("/pdfs/{pdf_id}")
-async def delete_pdf(pdf_id: int, session: Session = Depends(get_session)):
+async def delete_pdf(
+    pdf_id: int, 
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user_with_db_path)
+):
     """Delete a PDF and all its associated operations"""
     pdf = session.exec(select(PDF).where(PDF.id == pdf_id)).first()
     if not pdf:
@@ -193,7 +269,8 @@ async def list_operations(
     pdf_id: Optional[int] = None,
     limit: int = 100,
     offset: int = 0,
-    session: Session = Depends(get_session)
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user_with_db_path)
 ):
     """List operations with optional filtering"""
     query = select(OperationRow)
@@ -223,7 +300,8 @@ async def create_manual_operation_endpoint(
     amount_lei: str = Form(...),  # Accept as string first
     description: Optional[str] = Form(None),
     processed_date: Optional[str] = Form(None),
-    session: Session = Depends(get_session)
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user_with_db_path)
 ):
     """Create a manual operation"""
     try:
@@ -280,7 +358,8 @@ async def create_manual_operation_endpoint(
 async def get_operations_by_month_endpoint(
     year: int,
     month: int,
-    session: Session = Depends(get_session)
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user_with_db_path)
 ):
     """Get all operations for a specific month"""
     try:
@@ -308,7 +387,8 @@ async def get_operations_by_month_endpoint(
 @app.delete("/operations/{operation_id}")
 async def delete_operation_endpoint(
     operation_id: int,
-    session: Session = Depends(get_session)
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user_with_db_path)
 ):
     """Delete an operation by ID"""
     try:
@@ -324,7 +404,10 @@ async def delete_operation_endpoint(
 
 
 @app.get("/statistics")
-async def get_statistics(session: Session = Depends(get_session)):
+async def get_statistics(
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user_with_db_path)
+):
     """Get overall statistics"""
     pdfs = session.exec(select(PDF)).all()
     operations = session.exec(select(OperationRow)).all()
@@ -346,7 +429,8 @@ async def get_statistics(session: Session = Depends(get_session)):
 async def create_type(
     name: str,
     description: Optional[str] = None,
-    session: Session = Depends(get_session)
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user_with_db_path)
 ):
     """Create a new operation type"""
     try:
@@ -361,7 +445,10 @@ async def create_type(
         raise HTTPException(status_code=400, detail=f"Error creating operation type: {str(e)}")
 
 @app.get("/operation-types")
-async def list_operation_types(session: Session = Depends(get_session)):
+async def list_operation_types(
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user_with_db_path)
+):
     """List all operation types"""
     types = get_operation_types(session)
     return [
@@ -375,7 +462,11 @@ async def list_operation_types(session: Session = Depends(get_session)):
     ]
 
 @app.get("/operation-types/{type_id}")
-async def get_operation_type(type_id: int, session: Session = Depends(get_session)):
+async def get_operation_type(
+    type_id: int, 
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user_with_db_path)
+):
     """Get a specific operation type"""
     op_type = get_operation_type_by_id(session, type_id)
     if not op_type:
@@ -393,7 +484,8 @@ async def update_type(
     type_id: int,
     name: Optional[str] = None,
     description: Optional[str] = None,
-    session: Session = Depends(get_session)
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user_with_db_path)
 ):
     """Update an operation type"""
     op_type = update_operation_type(session, type_id, name, description)
@@ -408,7 +500,11 @@ async def update_type(
     }
 
 @app.delete("/operation-types/{type_id}")
-async def delete_type(type_id: int, session: Session = Depends(get_session)):
+async def delete_type(
+    type_id: int, 
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user_with_db_path)
+):
     """Delete an operation type"""
     success = delete_operation_type(session, type_id)
     if not success:
@@ -420,7 +516,8 @@ async def delete_type(type_id: int, session: Session = Depends(get_session)):
 async def assign_type_to_operation(
     operation_id: int,
     type_id: Optional[int] = None,
-    session: Session = Depends(get_session)
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user_with_db_path)
 ):
     """Assign a type to an operation"""
     operation = assign_operation_type(session, operation_id, type_id)
@@ -440,7 +537,8 @@ async def assign_type_to_operation(
 @app.get("/operations/by-type/{type_id}")
 async def get_operations_by_type_endpoint(
     type_id: int,
-    session: Session = Depends(get_session)
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user_with_db_path)
 ):
     """Get all operations of a specific type"""
     operations = get_operations_by_type(session, type_id)
@@ -460,7 +558,8 @@ async def get_operations_by_type_endpoint(
 @app.get("/operations/with-types")
 async def get_operations_with_types_endpoint(
     pdf_id: Optional[int] = None,
-    session: Session = Depends(get_session)
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user_with_db_path)
 ):
     """Get operations with their associated types"""
     operations_with_types = get_operations_with_types(session, pdf_id)
@@ -488,7 +587,8 @@ async def get_operations_with_types_endpoint(
 @app.get("/operations/null-types")
 async def get_operations_with_null_types_endpoint(
     pdf_id: Optional[int] = None,
-    session: Session = Depends(get_session)
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user_with_db_path)
 ):
     """Get operations that have null type_id"""
     operations = get_operations_with_null_types(session, pdf_id)
@@ -507,7 +607,10 @@ async def get_operations_with_null_types_endpoint(
 
 # Monthly Reports endpoints
 @app.get("/reports/available-months")
-async def get_available_months_endpoint(session: Session = Depends(get_session)):
+async def get_available_months_endpoint(
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user_with_db_path)
+):
     """Get list of available months with data"""
     return get_available_months(session)
 
@@ -516,7 +619,8 @@ async def get_available_months_endpoint(session: Session = Depends(get_session))
 async def get_monthly_report(
     year: int,
     month: int,
-    session: Session = Depends(get_session)
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user_with_db_path)
 ):
     """Get monthly report data with pie chart and grouped operations"""
     if month < 1 or month > 12:
@@ -532,7 +636,8 @@ async def get_monthly_operations_by_type(
     type_id: int,
     limit: int = 10,
     offset: int = 0,
-    session: Session = Depends(get_session)
+    session: Session = Depends(get_session),
+    current_user: User = Depends(get_current_user_with_db_path)
 ):
     """Get operations of a specific type for a given month with pagination"""
     if month < 1 or month > 12:
