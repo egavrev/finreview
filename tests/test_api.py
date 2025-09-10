@@ -5,13 +5,36 @@ import tempfile
 import shutil
 import sys
 from unittest.mock import patch, MagicMock
+from datetime import datetime
 
 # Add project root to path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from api.main import app
-from sql_utils import get_engine, init_db, PDF, OperationRow, process_and_store
+from sql_utils import get_engine, init_db, PDF, OperationRow, process_and_store, User
 from sqlmodel import Session, select
+
+# Create a mock user for testing
+mock_user = User(
+    id=1,
+    google_id="test_google_id",
+    email="test@example.com",
+    name="Test User",
+    picture="https://example.com/picture.jpg",
+    created_at=datetime.utcnow(),
+    last_login=datetime.utcnow()
+)
+
+# Override the authentication dependency for testing
+def override_get_current_user():
+    return mock_user
+
+# Apply the override to all endpoints that require authentication
+app.dependency_overrides[app.dependency_overrides.get("get_current_user_with_db_path", None)] = override_get_current_user
+
+# Import and override the actual dependency
+from api.main import get_current_user_with_db_path
+app.dependency_overrides[get_current_user_with_db_path] = override_get_current_user
 
 client = TestClient(app)
 

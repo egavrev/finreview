@@ -28,12 +28,33 @@ from api.rules_api import (
     RuleValidationResponse,
     RunMatcherRequest,
     RunMatcherResponse,
-    get_session
+    get_session,
+    get_current_user_with_db_path
 )
+from sql_utils import User
+from datetime import datetime
 
 # Create test app
 app = FastAPI()
 app.include_router(router)
+
+# Create a mock user for testing
+mock_user = User(
+    id=1,
+    google_id="test_google_id",
+    email="test@example.com",
+    name="Test User",
+    picture="https://example.com/picture.jpg",
+    created_at=datetime.utcnow(),
+    last_login=datetime.utcnow()
+)
+
+# Override the authentication dependency for testing
+def override_get_current_user():
+    return mock_user
+
+# Apply the override to all endpoints that require authentication
+app.dependency_overrides[get_current_user_with_db_path] = override_get_current_user
 
 
 class TestPydanticModels:
@@ -298,8 +319,8 @@ class TestAPIEndpointsWorking:
                 "pattern": "AGRO"
             }
         )
-        # This should pass validation but fail in the endpoint logic
-        assert response.status_code in [400, 500]
+        # This should fail validation due to Pydantic v2 validation
+        assert response.status_code == 422
     
     def test_negative_weight(self, client):
         """Test request with negative weight"""
@@ -312,8 +333,8 @@ class TestAPIEndpointsWorking:
                 "weight": -10
             }
         )
-        # This should pass validation but might fail in business logic
-        assert response.status_code in [200, 400, 500]
+        # This should fail validation due to Pydantic v2 validation
+        assert response.status_code == 422
     
     def test_empty_pattern(self, client):
         """Test request with empty pattern"""
@@ -325,8 +346,8 @@ class TestAPIEndpointsWorking:
                 "pattern": ""
             }
         )
-        # This should pass validation but fail in business logic
-        assert response.status_code in [400, 500]
+        # This should fail validation due to Pydantic v2 validation
+        assert response.status_code == 422
 
 
 class TestAPIEndpointsWithMocking:
@@ -452,11 +473,12 @@ class TestAPIEndpointsWithMocking:
             
             # Test request
             response = client.get("/api/rules/categories")
-            
+
             assert response.status_code == 200
             data = response.json()
-            assert len(data) == 1
-            assert data[0]['name'] == 'Test Category'
+            # Response is now paginated, so check the items array
+            assert len(data["items"]) == 1
+            assert data["items"][0]['name'] == 'Test Category'
     
     def test_list_rules_success(self, client):
         """Test successful rule listing with proper mocking"""
@@ -488,11 +510,12 @@ class TestAPIEndpointsWithMocking:
             
             # Test request
             response = client.get("/api/rules/rules")
-            
+
             assert response.status_code == 200
             data = response.json()
-            assert len(data) == 1
-            assert data[0]['rule_type'] == 'keyword'
+            # Response is now paginated, so check the items array
+            assert len(data["items"]) == 1
+            assert data["items"][0]['rule_type'] == 'keyword'
     
     def test_bulk_update_priorities_success(self, client):
         """Test successful bulk priority update with proper mocking"""
