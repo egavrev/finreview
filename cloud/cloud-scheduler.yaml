@@ -1,0 +1,35 @@
+# Cloud Scheduler configuration for keeping containers warm
+# This will ping both services every 30 minutes to prevent cold starts
+
+# PostgreSQL Health Check Job
+- name: "postgres-warm-up"
+  description: "Keep PostgreSQL container warm"
+  schedule: "*/30 * * * *"  # Every 30 minutes
+  time_zone: "UTC"
+  http_target:
+    uri: "https://postgres-service-xxxxx-uc.a.run.app/health"
+    http_method: GET
+    headers:
+      "Content-Type": "application/json"
+
+# FastAPI Health Check Job  
+- name: "fastapi-warm-up"
+  description: "Keep FastAPI container warm"
+  schedule: "*/30 * * * *"  # Every 30 minutes
+  time_zone: "UTC"
+  http_target:
+    uri: "https://finreview-app-xxxxx-uc.a.run.app/health"
+    http_method: GET
+    headers:
+      "Content-Type": "application/json"
+
+# Database Connection Check Job
+- name: "database-warm-up"
+  description: "Keep database connection warm"
+  schedule: "*/30 * * * *"  # Every 30 minutes
+  time_zone: "UTC"
+  http_target:
+    uri: "https://finreview-app-xxxxx-uc.a.run.app/health/database"
+    http_method: GET
+    headers:
+      "Content-Type": "application/json"

@@ -10,6 +10,7 @@ from pathlib import Path
 import tempfile
 import shutil
 import os
+from datetime import datetime
 from dotenv import load_dotenv
 
 # Load environment variables from .env file
@@ -35,18 +36,28 @@ from auth import authenticate_google_user, get_current_user, get_google_oauth_ur
 app = FastAPI(title="Financial Review API", version="1.0.0")
 
 # CORS middleware for frontend communication
+# Get CORS origins from environment or use defaults
+cors_origins = os.getenv("CORS_ORIGINS", "http://localhost:3000,http://192.168.0.6:3000,http://192.168.0.6:8000").split(",")
+frontend_url = os.getenv("FRONTEND_URL", "http://localhost:3000")
+
 app.add_middleware(
     CORSMiddleware,
-    #add as well 192.168.0.6:3000
-    allow_origins=["http://localhost:3000", "http://192.168.0.6:3000", "http://192.168.0.6:8000"],  # Next.js default port
+    allow_origins=cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Database setup
-DB_PATH = Path(__file__).parent / "db.sqlite"  # Database in api/ directory
-engine = get_engine(DB_PATH)
+# Database setup - PostgreSQL for production, SQLite for development
+if os.getenv("ENVIRONMENT") == "production":
+    # Production: Use PostgreSQL
+    DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://finreview_user:FlhugG77XDC1_0SlYUfhuzd-TkEySuwTtYFcV3luIh0@postgres-service:5432/finreview")
+    engine = get_engine(DATABASE_URL)
+else:
+    # Development: Use SQLite
+    DB_PATH = Path(__file__).parent / "db.sqlite"
+    engine = get_engine(DB_PATH)
+
 init_db(engine)
 
 # Include routers
@@ -59,6 +70,33 @@ def get_session():
 @app.get("/")
 async def root():
     return {"message": "Financial Review API"}
+
+@app.get("/health")
+async def health_check():
+    """Health check endpoint to keep container warm"""
+    return {
+        "status": "healthy",
+        "timestamp": datetime.now().isoformat(),
+        "service": "finreview-api"
+    }
+
+@app.get("/health/database")
+async def health_check_database(session: Session = Depends(get_session)):
+    """Health check that also tests database connection"""
+    try:
+        # Simple database query to keep PostgreSQL warm too
+        session.exec(select(OperationRow).limit(1))
+        return {
+            "status": "healthy",
+            "database": "connected",
+            "timestamp": datetime.now().isoformat()
+        }
+    except Exception as e:
+        return {
+            "status": "unhealthy",
+            "database": "error",
+            "error": str(e)
+        }
 
 
 # Authentication endpoints
@@ -77,21 +115,18 @@ async def google_callback(code: str = Query(...)):
         
         # Redirect to frontend with token in URL parameter
         token = result["access_token"]
-        frontend_url = "http://localhost:3000"
         redirect_url = f"{frontend_url}/auth/callback?token={token}"
         
         return RedirectResponse(url=redirect_url)
         
     except AuthError as e:
         # Redirect to frontend with error
-        frontend_url = "http://localhost:3000"
         error_url = f"{frontend_url}/auth/error?message={str(e)}"
         return RedirectResponse(url=error_url)
     except Exception as e:
         import traceback
         traceback.print_exc()
         # Redirect to frontend with error
-        frontend_url = "http://localhost:3000"
         error_url = f"{frontend_url}/auth/error?message=Authentication failed"
         return RedirectResponse(url=error_url)
 

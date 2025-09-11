@@ -1,0 +1,79 @@
+# Cloud Build configuration for automated deployment
+steps:
+  # Build PostgreSQL image
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['build', '-f', 'cloud/postgres.Dockerfile', '-t', 'gcr.io/$PROJECT_ID/postgres:$COMMIT_SHA', '.']
+    
+  # Build FastAPI image
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['build', '-t', 'gcr.io/$PROJECT_ID/finreview-app:$COMMIT_SHA', '.']
+    
+  # Push PostgreSQL image to Container Registry
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'gcr.io/$PROJECT_ID/postgres:$COMMIT_SHA']
+    
+  # Push FastAPI image to Container Registry
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'gcr.io/$PROJECT_ID/finreview-app:$COMMIT_SHA']
+    
+  # Deploy PostgreSQL to Cloud Run
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: 'gcloud'
+    args:
+      - 'run'
+      - 'deploy'
+      - 'postgres-service'
+      - '--image'
+      - 'gcr.io/$PROJECT_ID/postgres:$COMMIT_SHA'
+      - '--region'
+      - 'us-central1'
+      - '--platform'
+      - 'managed'
+      - '--allow-unauthenticated'
+      - '--port'
+      - '5432'
+      - '--memory'
+      - '1Gi'
+      - '--cpu'
+      - '1'
+      - '--max-instances'
+      - '5'
+      - '--set-env-vars'
+      - 'POSTGRES_DB=finreview,POSTGRES_USER=finreview_user,POSTGRES_PASSWORD=FlhugG77XDC1_0SlYUfhuzd-TkEySuwTtYFcV3luIh0'
+    
+  # Deploy FastAPI to Cloud Run
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: 'gcloud'
+    args:
+      - 'run'
+      - 'deploy'
+      - 'finreview-app'
+      - '--image'
+      - 'gcr.io/$PROJECT_ID/finreview-app:$COMMIT_SHA'
+      - '--region'
+      - 'us-central1'
+      - '--platform'
+      - 'managed'
+      - '--allow-unauthenticated'
+      - '--port'
+      - '8080'
+      - '--memory'
+      - '1Gi'
+      - '--cpu'
+      - '1'
+      - '--max-instances'
+      - '10'
+      - '--set-env-vars'
+      - 'DATABASE_URL=postgresql://finreview_user:FlhugG77XDC1_0SlYUfhuzd-TkEySuwTtYFcV3luIh0@postgres-service:5432/finreview,ENVIRONMENT=production,FRONTEND_URL=https://finreview-app.web.app'
+      - '--set-secrets'
+      - 'GOOGLE_CLIENT_ID=google-client-id:latest,GOOGLE_CLIENT_SECRET=google-client-secret:latest,JWT_SECRET_KEY=jwt-secret-key:latest'
+
+# Store images in Container Registry
+images:
+  - 'gcr.io/$PROJECT_ID/finreview-app:$COMMIT_SHA'
+  - 'gcr.io/$PROJECT_ID/postgres:$COMMIT_SHA'
+
+# Build options
+options:
+  machineType: 'E2_HIGHCPU_8'
+  diskSizeGb: 100
