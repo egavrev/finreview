@@ -42,16 +42,23 @@ export default function FilesPage() {
           'Authorization': `Bearer ${token}`,
         },
       })
-      if (response.ok) {
-        const data = await response.json()
-        setPdfs(data || [])
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+      
+      const data = await response.json()
+      
+      // Ensure data is an array, if not, set empty array
+      if (Array.isArray(data)) {
+        setPdfs(data)
       } else {
-        console.error('Failed to fetch PDFs:', response.status)
+        console.error('Expected array but got:', data)
         setPdfs([])
       }
     } catch (error) {
       console.error('Error fetching PDFs:', error)
-      setPdfs([])
+      setPdfs([]) // Set empty array on error
     }
   }
 
@@ -247,13 +254,15 @@ export default function FilesPage() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <FileText className="h-5 w-5" />
-            Uploaded Files ({pdfs.length})
+            Uploaded Files ({Array.isArray(pdfs) ? pdfs.length : 0})
           </CardTitle>
           <CardDescription>Manage your uploaded PDF files and their associated operations</CardDescription>
         </CardHeader>
         <CardContent>
-          {pdfs.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No files uploaded yet.</p>
+          {!Array.isArray(pdfs) || pdfs.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              {!Array.isArray(pdfs) ? 'Loading files...' : 'No files uploaded yet.'}
+            </p>
           ) : (
             <div className="space-y-4">
               {pdfs.map((pdf) => (

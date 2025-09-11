@@ -79,12 +79,23 @@ export default function OperationsPage() {
           'Authorization': `Bearer ${token}`,
         },
       })
-      if (response.ok) {
-        const data = await response.json()
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+      
+      const data = await response.json()
+      
+      // Ensure data is an array, if not, set empty array
+      if (Array.isArray(data)) {
         setOperations(data)
+      } else {
+        console.error('Expected array but got:', data)
+        setOperations([])
       }
     } catch (error) {
       console.error('Error fetching operations:', error)
+      setOperations([]) // Set empty array on error
     }
   }
 
@@ -95,12 +106,23 @@ export default function OperationsPage() {
           'Authorization': `Bearer ${token}`,
         },
       })
-      if (response.ok) {
-        const data = await response.json()
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+      
+      const data = await response.json()
+      
+      // Ensure data is an array, if not, set empty array
+      if (Array.isArray(data)) {
         setOperationTypes(data)
+      } else {
+        console.error('Expected array but got:', data)
+        setOperationTypes([])
       }
     } catch (error) {
       console.error('Error fetching operation types:', error)
+      setOperationTypes([]) // Set empty array on error
     }
   }
 
@@ -261,17 +283,23 @@ export default function OperationsPage() {
       })
       console.log('Response status:', response.status)
       
-      if (response.ok) {
-        const data = await response.json()
-        console.log('Received operations:', data)
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+      
+      const data = await response.json()
+      console.log('Received operations:', data)
+      
+      // Ensure data is an array, if not, set empty array
+      if (Array.isArray(data)) {
         setMonthlyOperations(data)
       } else {
-        console.error('Error fetching monthly operations:', response.statusText)
-        const errorText = await response.text()
-        console.error('Error response:', errorText)
+        console.error('Expected array but got:', data)
+        setMonthlyOperations([])
       }
     } catch (error) {
       console.error('Error fetching monthly operations:', error)
+      setMonthlyOperations([]) // Set empty array on error
     } finally {
       setMonthlyOperationsLoading(false)
     }
@@ -390,7 +418,7 @@ export default function OperationsPage() {
     }
   }
 
-  if (loading > 0) {
+  if (loading) {
     return (
       <div className="p-8">
         <div className="text-center py-12">

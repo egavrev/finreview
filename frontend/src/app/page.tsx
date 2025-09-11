@@ -70,10 +70,23 @@ export default function Dashboard() {
           'Authorization': `Bearer ${token}`,
         },
       })
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+      
       const data = await response.json()
-      setPdfs(data)
+      
+      // Ensure data is an array, if not, set empty array
+      if (Array.isArray(data)) {
+        setPdfs(data)
+      } else {
+        console.error('Expected array but got:', data)
+        setPdfs([])
+      }
     } catch (error) {
       console.error('Error fetching PDFs:', error)
+      setPdfs([]) // Set empty array on error
     }
   }
 
@@ -157,26 +170,34 @@ export default function Dashboard() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {pdfs.map((pdf) => (
-                <TableRow key={pdf.id}>
-                  <TableCell>{pdf.id}</TableCell>
-                  <TableCell>{pdf.client_name || 'N/A'}</TableCell>
-                  <TableCell>{pdf.account_number || 'N/A'}</TableCell>
-                  <TableCell>
-                    <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                      {pdf.operations_count}
-                    </span>
-                  </TableCell>
-                  <TableCell>{formatCurrency(pdf.total_iesiri)}</TableCell>
-                  <TableCell>{formatCurrency(pdf.sold_initial)}</TableCell>
-                  <TableCell>{formatCurrency(pdf.sold_final)}</TableCell>
-                  <TableCell>
-                    <Link href={`/pdf/${pdf.id}`} className="text-blue-600 hover:underline">
-                      View Details
-                    </Link>
+              {Array.isArray(pdfs) && pdfs.length > 0 ? (
+                pdfs.map((pdf) => (
+                  <TableRow key={pdf.id}>
+                    <TableCell>{pdf.id}</TableCell>
+                    <TableCell>{pdf.client_name || 'N/A'}</TableCell>
+                    <TableCell>{pdf.account_number || 'N/A'}</TableCell>
+                    <TableCell>
+                      <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                        {pdf.operations_count}
+                      </span>
+                    </TableCell>
+                    <TableCell>{formatCurrency(pdf.total_iesiri)}</TableCell>
+                    <TableCell>{formatCurrency(pdf.sold_initial)}</TableCell>
+                    <TableCell>{formatCurrency(pdf.sold_final)}</TableCell>
+                    <TableCell>
+                      <Link href={`/pdf/${pdf.id}`} className="text-blue-600 hover:underline">
+                        View Details
+                      </Link>
+                    </TableCell>
+                  </TableRow>
+                ))
+              ) : (
+                <TableRow>
+                  <TableCell colSpan={8} className="text-center text-muted-foreground py-8">
+                    {Array.isArray(pdfs) ? 'No PDFs found' : 'Loading PDFs...'}
                   </TableCell>
                 </TableRow>
-              ))}
+              )}
             </TableBody>
           </Table>
         </CardContent>
