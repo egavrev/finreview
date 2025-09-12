@@ -40,7 +40,17 @@ steps:
       - '5'
       - '--set-env-vars'
       - 'POSTGRES_DB=finreview,POSTGRES_USER=finreview_user,POSTGRES_PASSWORD=FlhugG77XDC1_0SlYUfhuzd-TkEySuwTtYFcV3luIh0'
-    
+      
+  # Wait for PostgreSQL to be ready
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        echo "Waiting for PostgreSQL service to be ready..."
+        sleep 30
+        echo "PostgreSQL should be ready now"
+      
   # Deploy FastAPI to Cloud Run
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     entrypoint: 'gcloud'

@@ -49,16 +49,39 @@ app.add_middleware(
 )
 
 # Database setup - PostgreSQL for production, SQLite for development
-if os.getenv("ENVIRONMENT") == "production":
-    # Production: Use PostgreSQL
-    DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://finreview_user:FlhugG77XDC1_0SlYUfhuzd-TkEySuwTtYFcV3luIh0@postgres-service:5432/finreview")
-    engine = get_engine(DATABASE_URL)
-else:
-    # Development: Use SQLite
-    DB_PATH = Path(__file__).parent / "db.sqlite"
-    engine = get_engine(DB_PATH)
+import time
 
-init_db(engine)
+def setup_database_with_retry():
+    """Setup database with retry logic for production deployments"""
+    max_retries = 5
+    retry_delay = 5
+    
+    for attempt in range(max_retries):
+        try:
+            if os.getenv("ENVIRONMENT") == "production":
+                # Production: Use PostgreSQL
+                DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://finreview_user:FlhugG77XDC1_0SlYUfhuzd-TkEySuwTtYFcV3luIh0@postgres-service:5432/finreview")
+                engine = get_engine(DATABASE_URL)
+            else:
+                # Development: Use SQLite
+                DB_PATH = Path(__file__).parent / "db.sqlite"
+                engine = get_engine(DB_PATH)
+            
+            init_db(engine)
+            print(f"✅ Database connected successfully on attempt {attempt + 1}")
+            return engine
+            
+        except Exception as e:
+            print(f"❌ Database connection attempt {attempt + 1} failed: {e}")
+            if attempt < max_retries - 1:
+                print(f"⏳ Retrying in {retry_delay} seconds...")
+                time.sleep(retry_delay)
+                retry_delay *= 2  # Exponential backoff
+            else:
+                print("💥 All database connection attempts failed")
+                raise e
+
+engine = setup_database_with_retry()
 
 # Include routers
 app.include_router(rules_router)
