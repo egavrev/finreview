@@ -10,6 +10,7 @@ from pathlib import Path
 import tempfile
 import shutil
 import os
+import time
 from datetime import datetime
 from dotenv import load_dotenv
 
@@ -49,22 +50,22 @@ app.add_middleware(
 )
 
 # Database setup - PostgreSQL for production, SQLite for development
-import time
-
 def setup_database_with_retry():
     """Setup database with retry logic for production deployments"""
-    max_retries = 5
-    retry_delay = 5
+    max_retries = 3  # Reduced from 5 to 3
+    retry_delay = 2  # Reduced from 5 to 2 seconds
     
     for attempt in range(max_retries):
         try:
             if os.getenv("ENVIRONMENT") == "production":
                 # Production: Use PostgreSQL
                 DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://finreview_user:FlhugG77XDC1_0SlYUfhuzd-TkEySuwTtYFcV3luIh0@postgres-service:5432/finreview")
+                print(f"🔄 Attempting to connect to PostgreSQL: {DATABASE_URL}")
                 engine = get_engine(DATABASE_URL)
             else:
                 # Development: Use SQLite
                 DB_PATH = Path(__file__).parent / "db.sqlite"
+                print(f"🔄 Using SQLite database: {DB_PATH}")
                 engine = get_engine(DB_PATH)
             
             init_db(engine)
@@ -76,10 +77,19 @@ def setup_database_with_retry():
             if attempt < max_retries - 1:
                 print(f"⏳ Retrying in {retry_delay} seconds...")
                 time.sleep(retry_delay)
-                retry_delay *= 2  # Exponential backoff
+                retry_delay *= 1.5  # Reduced backoff multiplier
             else:
                 print("💥 All database connection attempts failed")
-                raise e
+                # In production, fail fast rather than hanging
+                if os.getenv("ENVIRONMENT") == "production":
+                    raise e
+                else:
+                    # In development, fall back to SQLite
+                    print("🔄 Falling back to SQLite for development...")
+                    DB_PATH = Path(__file__).parent / "db.sqlite"
+                    engine = get_engine(DB_PATH)
+                    init_db(engine)
+                    return engine
 
 engine = setup_database_with_retry()
 
