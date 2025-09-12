@@ -12,7 +12,8 @@ This folder contains all files related to Google Cloud Platform deployment.
 
 ### Configuration Files
 - **`env.gcp.example`** - Environment variables template for production
-- **`migrate_production.py`** - Script to migrate SQLite data to production PostgreSQL
+- **`migrate.sql`** - Complete migration script with database initialization
+- **`run_migration.sh`** - Bash script for easy migration execution
 
 ## Quick Start
 
@@ -22,10 +23,13 @@ This folder contains all files related to Google Cloud Platform deployment.
    # Or manually run the deployment steps from DEPLOYMENT_GUIDE.md
    ```
 
-2. **Migrate Existing Data**:
+2. **Initialize Database**:
    ```bash
-   # After deployment, run migration script
-   python cloud/migrate_production.py
+   # Run the simple SQL migration
+   ./cloud/run_migration.sh
+   
+   # Or manually:
+   psql -d finreview -f cloud/migrate.sql
    ```
 
 3. **Keep Containers Warm**:
