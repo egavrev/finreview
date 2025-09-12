@@ -2,11 +2,11 @@
 steps:
   # Build PostgreSQL image
   - name: 'gcr.io/cloud-builders/docker'
-    args: ['build', '-f', 'cloud/postgres.Dockerfile', '-t', 'gcr.io/$PROJECT_ID/postgres:$COMMIT_SHA', '.']
+    args: ['build', '-f', 'cloud/Dockerfile.postgres', '-t', 'gcr.io/$PROJECT_ID/postgres:$COMMIT_SHA', '.']
     
   # Build FastAPI image
   - name: 'gcr.io/cloud-builders/docker'
-    args: ['build', '-t', 'gcr.io/$PROJECT_ID/finreview-app:$COMMIT_SHA', '.']
+    args: ['build', '-f', 'cloud/Dockerfile.backend', '-t', 'gcr.io/$PROJECT_ID/finreview-app:$COMMIT_SHA', '.']
     
   # Push PostgreSQL image to Container Registry
   - name: 'gcr.io/cloud-builders/docker'
