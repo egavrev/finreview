@@ -50,13 +50,13 @@ steps:
         echo "Waiting for PostgreSQL service to be ready..."
         sleep 30
         echo "Getting PostgreSQL service URL..."
-        POSTGRES_URL=$(gcloud run services describe postgres-service --region=europe-west1 --format="value(status.url)")
-        echo "PostgreSQL URL: $POSTGRES_URL"
+        POSTGRES_URL=$$(gcloud run services describe postgres-service --region=europe-west1 --format="value(status.url)")
+        echo "PostgreSQL URL: $$POSTGRES_URL"
         # Remove https:// and any path to get just the hostname
-        POSTGRES_HOST=$(echo $POSTGRES_URL | sed 's|https://||' | sed 's|/.*||')
-        echo "PostgreSQL hostname: $POSTGRES_HOST"
+        POSTGRES_HOST=$$(echo $$POSTGRES_URL | sed 's|https://||' | sed 's|/.*||')
+        echo "PostgreSQL hostname: $$POSTGRES_HOST"
         # Store the hostname for the next step
-        echo "POSTGRES_HOST=$POSTGRES_HOST" >> /workspace/postgres_host.env
+        echo "POSTGRES_HOST=$$POSTGRES_HOST" >> /workspace/postgres_host.env
         echo "PostgreSQL should be ready now"
       
   # Deploy FastAPI to Cloud Run
@@ -66,9 +66,9 @@ steps:
       - '-c'
       - |
         source /workspace/postgres_host.env
-        echo "Using PostgreSQL hostname: $POSTGRES_HOST"
-        DATABASE_URL="postgresql://finreview_user:FlhugG77XDC1_0SlYUfhuzd-TkEySuwTtYFcV3luIh0@$POSTGRES_HOST:5432/finreview"
-        echo "Database URL: $DATABASE_URL"
+        echo "Using PostgreSQL hostname: $$POSTGRES_HOST"
+        DATABASE_URL="postgresql://finreview_user:FlhugG77XDC1_0SlYUfhuzd-TkEySuwTtYFcV3luIh0@$$POSTGRES_HOST:5432/finreview"
+        echo "Database URL: $$DATABASE_URL"
         
         gcloud run deploy finreview-app \
           --image gcr.io/$PROJECT_ID/finreview-app:$COMMIT_SHA \
@@ -80,7 +80,7 @@ steps:
           --cpu 1 \
           --max-instances 10 \
           --timeout 900 \
-          --set-env-vars DATABASE_URL="$DATABASE_URL" \
+          --set-env-vars DATABASE_URL="$$DATABASE_URL" \
           --set-env-vars ENVIRONMENT=production \
           --set-env-vars FRONTEND_URL=https://finreview-app.web.app \
           --set-secrets GOOGLE_CLIENT_ID=google-client-id:latest,GOOGLE_CLIENT_SECRET=google-client-secret:latest,JWT_SECRET_KEY=jwt-secret-key:latest
