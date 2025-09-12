@@ -55,6 +55,11 @@ def setup_database_with_retry():
     max_retries = 3  # Reduced from 5 to 3
     retry_delay = 2  # Reduced from 5 to 2 seconds
     
+    # Debug environment variables
+    print(f"🔍 ENVIRONMENT variable: '{os.getenv('ENVIRONMENT')}'")
+    print(f"🔍 DATABASE_URL variable: '{os.getenv('DATABASE_URL')}'")
+    print(f"🔍 All environment variables: {dict(os.environ)}")
+    
     for attempt in range(max_retries):
         try:
             if os.getenv("ENVIRONMENT") == "production":
