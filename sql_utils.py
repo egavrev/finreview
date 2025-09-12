@@ -50,16 +50,23 @@ class OperationRow(SQLModel, table=True):
 
 
 def get_engine(db_path: str | Path):
-    url = f"sqlite:///{Path(db_path)}"
-    engine = create_engine(url, connect_args={"check_same_thread": False})
+    # Check if it's a PostgreSQL URL or a file path
+    if isinstance(db_path, str) and db_path.startswith(("postgresql://", "postgres://")):
+        # PostgreSQL URL
+        url = db_path
+        engine = create_engine(url)
+    else:
+        # SQLite file path
+        url = f"sqlite:///{Path(db_path)}"
+        engine = create_engine(url, connect_args={"check_same_thread": False})
 
-    @event.listens_for(engine, "connect")
-    def _set_sqlite_pragma(dbapi_connection, connection_record):  # type: ignore[no-redef]
-        cursor = dbapi_connection.cursor()
-        try:
-            cursor.execute("PRAGMA foreign_keys=ON")
-        finally:
-            cursor.close()
+        @event.listens_for(engine, "connect")
+        def _set_sqlite_pragma(dbapi_connection, connection_record):  # type: ignore[no-redef]
+            cursor = dbapi_connection.cursor()
+            try:
+                cursor.execute("PRAGMA foreign_keys=ON")
+            finally:
+                cursor.close()
 
     return engine
 

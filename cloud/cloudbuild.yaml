@@ -76,7 +76,11 @@ steps:
       - '--timeout'
       - '900'
       - '--set-env-vars'
-      - 'DATABASE_URL=postgresql://finreview_user:FlhugG77XDC1_0SlYUfhuzd-TkEySuwTtYFcV3luIh0@postgres-service:5432/finreview,ENVIRONMENT=production,FRONTEND_URL=https://finreview-app.web.app'
+      - 'DATABASE_URL=postgresql://finreview_user:FlhugG77XDC1_0SlYUfhuzd-TkEySuwTtYFcV3luIh0@postgres-service:5432/finreview'
+      - '--set-env-vars'
+      - 'ENVIRONMENT=production'
+      - '--set-env-vars'
+      - 'FRONTEND_URL=https://finreview-app.web.app'
       - '--set-secrets'
       - 'GOOGLE_CLIENT_ID=google-client-id:latest,GOOGLE_CLIENT_SECRET=google-client-secret:latest,JWT_SECRET_KEY=jwt-secret-key:latest'
 
