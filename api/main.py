@@ -52,20 +52,19 @@ app.add_middleware(
 # Database setup - PostgreSQL for production, SQLite for development
 def setup_database_with_retry():
     """Setup database with retry logic for production deployments"""
-    max_retries = 3  # Reduced from 5 to 3
-    retry_delay = 2  # Reduced from 5 to 2 seconds
+    max_retries = 5  # Increased for Cloud Run
+    retry_delay = 5  # Increased for Cloud Run
     
     # Debug environment variables
     print(f"🔍 ENVIRONMENT variable: '{os.getenv('ENVIRONMENT')}'")
     print(f"🔍 DATABASE_URL variable: '{os.getenv('DATABASE_URL')}'")
-    print(f"🔍 All environment variables: {dict(os.environ)}")
     
     for attempt in range(max_retries):
         try:
             if os.getenv("ENVIRONMENT") == "production":
                 # Production: Use PostgreSQL
                 DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://finreview_user:FlhugG77XDC1_0SlYUfhuzd-TkEySuwTtYFcV3luIh0@postgres-service:5432/finreview")
-                print(f"🔄 Attempting to connect to PostgreSQL: {DATABASE_URL}")
+                print(f"🔄 Attempting to connect to PostgreSQL (attempt {attempt + 1}/{max_retries}): {DATABASE_URL}")
                 engine = get_engine(DATABASE_URL)
             else:
                 # Development: Use SQLite
@@ -82,26 +81,27 @@ def setup_database_with_retry():
             if attempt < max_retries - 1:
                 print(f"⏳ Retrying in {retry_delay} seconds...")
                 time.sleep(retry_delay)
-                retry_delay *= 1.5  # Reduced backoff multiplier
+                retry_delay *= 1.2  # Gentler backoff
             else:
                 print("💥 All database connection attempts failed")
-                # In production, fail fast rather than hanging
-                if os.getenv("ENVIRONMENT") == "production":
-                    raise e
-                else:
-                    # In development, fall back to SQLite
-                    print("🔄 Falling back to SQLite for development...")
-                    DB_PATH = Path(__file__).parent / "db.sqlite"
-                    engine = get_engine(DB_PATH)
-                    init_db(engine)
-                    return engine
+                # For Cloud Run, we need to start the app even if DB fails
+                print("🚀 Starting FastAPI without database connection...")
+                return None
 
-engine = setup_database_with_retry()
+# Try to setup database, but don't fail if it doesn't work
+try:
+    engine = setup_database_with_retry()
+    print("✅ Database engine created successfully")
+except Exception as e:
+    print(f"⚠️ Database setup failed, starting without DB: {e}")
+    engine = None
 
 # Include routers
 app.include_router(rules_router)
 
 def get_session():
+    if engine is None:
+        raise HTTPException(status_code=503, detail="Database not available")
     with Session(engine) as session:
         yield session
 
@@ -115,7 +115,8 @@ async def health_check():
     return {
         "status": "healthy",
         "timestamp": datetime.now().isoformat(),
-        "service": "finreview-api"
+        "service": "finreview-api",
+        "database": "connected" if engine is not None else "disconnected"
     }
 
 @app.get("/health/database")
