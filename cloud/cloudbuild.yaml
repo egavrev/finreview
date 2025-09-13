@@ -99,6 +99,12 @@ steps:
         echo "All substitution variables:"
         env | grep "^_" || echo "No substitution variables found"
         echo "=== END DEBUG ==="
+        echo "Checking if frontend/out directory exists..."
+        ls -la frontend/ || echo "Frontend directory not found"
+        ls -la frontend/out/ || echo "Frontend/out directory not found"
+        echo "Current directory contents:"
+        ls -la
+        echo "Deploying Firebase..."
         firebase deploy --only hosting --token "$_FIREBASE_TOKEN"
         echo "Frontend deployment completed"
 
