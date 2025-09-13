@@ -41,6 +41,28 @@ steps:
       - '--set-secrets'
       - 'GOOGLE_CLIENT_ID=google-client-id:latest,GOOGLE_CLIENT_SECRET=google-client-secret:latest,JWT_SECRET_KEY=jwt-secret-key:latest'
       
+  # Run database migration (idempotent)
+  - name: 'postgres:15'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        echo "Checking if database migration is needed..."
+        
+        # Check if operationtype table exists and has data
+        TABLE_COUNT=$$(PGPASSWORD=FlhugG77XDC1_0SlYUfhuzd-TkEySuwTtYFcV3luIh0 psql -h 35.214.141.13 -U finreview_user -d finreview -t -c "SELECT COUNT(*) FROM operationtype;" 2>/dev/null || echo "0")
+        
+        if [ "$$TABLE_COUNT" -gt 0 ]; then
+          echo "✅ Database already initialized ($$TABLE_COUNT operation types found)"
+          echo "Skipping migration - tables and data already exist"
+        else
+          echo "🔄 Database not initialized, running migration..."
+          PGPASSWORD=FlhugG77XDC1_0SlYUfhuzd-TkEySuwTtYFcV3luIh0 psql -h 35.214.141.13 -U finreview_user -d finreview -f /workspace/cloud/migrate.sql
+          echo "✅ Database migration completed"
+        fi
+    env:
+      - 'PGPASSWORD=FlhugG77XDC1_0SlYUfhuzd-TkEySuwTtYFcV3luIh0'
+      
   # Get FastAPI service URL for frontend
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     entrypoint: 'bash'
