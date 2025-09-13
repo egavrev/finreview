@@ -1,4 +1,4 @@
-# Cloud Build configuration for FastAPI deployment (PostgreSQL on e2-micro VM) 
+# Cloud Build configuration for full-stack deployment
 steps:
   # Build FastAPI image
   - name: 'gcr.io/cloud-builders/docker'
@@ -40,6 +40,41 @@ steps:
       - 'FRONTEND_URL=https://finreview-app.web.app'
       - '--set-secrets'
       - 'GOOGLE_CLIENT_ID=google-client-id:latest,GOOGLE_CLIENT_SECRET=google-client-secret:latest,JWT_SECRET_KEY=jwt-secret-key:latest'
+      
+  # Get FastAPI service URL for frontend
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        echo "Getting FastAPI service URL..."
+        FASTAPI_URL=$$(gcloud run services describe finreview-app --region=europe-west1 --format="value(status.url)")
+        echo "FastAPI URL: $$FASTAPI_URL"
+        echo "FASTAPI_URL=$$FASTAPI_URL" >> /workspace/fastapi_url.env
+        echo "FastAPI URL saved for frontend build"
+      
+  # Build frontend with correct API URL
+  - name: 'node:18'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        source /workspace/fastapi_url.env
+        echo "Building frontend with API URL: $$FASTAPI_URL"
+        cd frontend
+        npm install
+        NEXT_PUBLIC_API_URL=$$FASTAPI_URL npm run build
+        echo "Frontend build completed"
+        
+  # Deploy frontend to Firebase Hosting
+  - name: 'gcr.io/$PROJECT_ID/firebase'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        echo "Deploying frontend to Firebase Hosting..."
+        firebase deploy --only hosting --token $$_FIREBASE_TOKEN
+        echo "Frontend deployment completed"
 
 # Store images in Container Registry
 images:

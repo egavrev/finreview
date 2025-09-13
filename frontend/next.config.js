@@ -1,12 +1,16 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // App router is now available by default, no need for experimental.appDir
+  // Static export configuration
+  output: 'export',
+  trailingSlash: true,
+  images: {
+    unoptimized: true
+  },
   
-  // Network access configuration
-  // Uncomment the line below to enable network access by default
-  // serverRuntimeConfig: {
-  //   hostname: '0.0.0.0'
-  // }
+  // Environment variables for production
+  env: {
+    NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
+  }
 }
 
 module.exports = nextConfig
