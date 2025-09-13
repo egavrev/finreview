@@ -1,0 +1,27 @@
+# Docker Compose for PostgreSQL on e2-micro VM
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: finreview-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: finreview
+      POSTGRES_USER: finreview_user
+      POSTGRES_PASSWORD: FlhugG77XDC1_0SlYUfhuzd-TkEySuwTtYFcV3luIh0
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./migrate.sql:/docker-entrypoint-initdb.d/migrate.sql
+    networks:
+      - finreview-network
+
+volumes:
+  postgres_data:
+    driver: local
+
+networks:
+  finreview-network:
+    driver: bridge
