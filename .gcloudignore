@@ -1,0 +1,49 @@
+# Cloud Build ignore file
+# Include all source files but exclude build artifacts
+
+# Node modules
+**/node_modules/**
+
+# Build outputs
+**/.next/**
+**/out/**
+**/dist/**
+
+# Coverage reports
+**/coverage/**
+
+# Python cache
+**/__pycache__/**
+**/*.pyc
+**/*.pyo
+**/*.pyd
+**/.Python
+
+# IDE files
+**/.vscode/**
+**/.idea/**
+**/*.swp
+**/*.swo
+
+# OS files
+**/.DS_Store
+**/Thumbs.db
+
+# Logs
+**/*.log
+
+# Environment files
+**/.env
+**/.env.local
+**/.env.production
+
+# Git
+**/.git/**
+
+# Database files (we'll use PostgreSQL in production)
+**/*.db
+**/*.sqlite
+**/*.sqlite3
+
+# HTML coverage reports
+**/htmlcov/**

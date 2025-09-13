@@ -61,11 +61,14 @@ steps:
       - |
         source /workspace/fastapi_url.env
         echo "Building frontend with API URL: $$FASTAPI_URL"
+        echo "Workspace contents: $$(ls -la /workspace/)"
+        echo "Frontend directory exists: $$(test -d frontend && echo 'YES' || echo 'NO')"
         cd frontend
         echo "Current directory: $$(pwd)"
         echo "Contents: $$(ls -la)"
         echo "Source directory: $$(ls -la src/)"
-        echo "Lib directory: $$(ls -la src/lib/)"
+        echo "Lib directory exists: $$(test -d src/lib && echo 'YES' || echo 'NO')"
+        echo "Lib directory: $$(ls -la src/lib/ || echo 'NOT FOUND')"
         npm install
         NEXT_PUBLIC_API_URL=$$FASTAPI_URL npm run build
         echo "Frontend build completed"
