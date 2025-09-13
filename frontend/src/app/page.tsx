@@ -29,7 +29,7 @@ interface PDF {
   operations_count: number
 }
 
-export const formatCurrency = (amount: number | null) => {
+const formatCurrency = (amount: number | null) => {
   if (amount === null) return 'N/A'
   return new Intl.NumberFormat('en-US', {
     style: 'currency',

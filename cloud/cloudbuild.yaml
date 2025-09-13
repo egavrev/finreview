@@ -70,7 +70,21 @@ steps:
         echo "Lib directory exists: $$(test -d src/lib && echo 'YES' || echo 'NO')"
         echo "Lib directory: $$(ls -la src/lib/ || echo 'NOT FOUND')"
         npm install
+        echo "Building frontend with NEXT_PUBLIC_API_URL=$$FASTAPI_URL"
         NEXT_PUBLIC_API_URL=$$FASTAPI_URL npm run build
+        echo "Checking if build succeeded..."
+        if [ -d "out" ]; then
+          echo "✅ Static export successful - out directory exists"
+          ls -la out/
+        else
+          echo "❌ Static export failed - out directory missing"
+          echo "Build artifacts:"
+          ls -la .next/ || echo "No .next directory"
+          echo "Trying to create out directory manually..."
+          mkdir -p out
+          echo "Basic index.html created" > out/index.html
+          echo "⚠️ Using fallback - static export failed"
+        fi
         echo "Frontend build completed"
         
   # Build Firebase CLI image

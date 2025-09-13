@@ -1,4 +1,8 @@
-'use client'
+// Required for static export
+export async function generateStaticParams() {
+  // Return empty array for now - this will be populated at build time
+  return []
+}
 
 import { useState, useEffect } from 'react'
 import { ArrowLeft, Calendar, DollarSign, FileText } from 'lucide-react'

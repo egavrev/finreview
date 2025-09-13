@@ -91,6 +91,18 @@ const DialogFooter = React.forwardRef<
 ))
 DialogFooter.displayName = "DialogFooter"
 
+const DialogTrigger = React.forwardRef<
+  HTMLButtonElement,
+  React.ButtonHTMLAttributes<HTMLButtonElement>
+>(({ className, ...props }, ref) => (
+  <button
+    ref={ref}
+    className={cn("", className)}
+    {...props}
+  />
+))
+DialogTrigger.displayName = "DialogTrigger"
+
 export {
   Dialog,
   DialogHeader,
@@ -98,4 +110,5 @@ export {
   DialogDescription,
   DialogContent,
   DialogFooter,
+  DialogTrigger,
 }
