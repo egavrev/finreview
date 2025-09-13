@@ -94,7 +94,8 @@ const RulesManagement: React.FC = () => {
       });
       if (response.ok) {
         const data = await response.json();
-        setCategories(data);
+        // Handle paginated response - extract items array
+        setCategories(data.items || data);
       }
     } catch (error) {
       console.error('Error fetching categories:', error);
@@ -110,7 +111,8 @@ const RulesManagement: React.FC = () => {
       });
       if (response.ok) {
         const data = await response.json();
-        setRules(data);
+        // Handle paginated response - extract items array
+        setRules(data.items || data);
       }
     } catch (error) {
       console.error('Error fetching rules:', error);
@@ -258,7 +260,7 @@ const RulesManagement: React.FC = () => {
     }
   };
 
-  const filteredRules = rules.filter(rule => {
+  const filteredRules = (rules || []).filter(rule => {
     const categoryMatch = selectedCategory === 'all' || rule.category === selectedCategory;
     const typeMatch = selectedType === 'all' || rule.rule_type === selectedType;
     return categoryMatch && typeMatch;
@@ -307,9 +309,9 @@ const RulesManagement: React.FC = () => {
                 <div className="text-center py-8">
                   <p className="text-muted-foreground">Loading categories...</p>
                 </div>
-              ) : categories && categories.length > 0 ? (
+              ) : (categories || []).length > 0 ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {categories.map((category) => (
+                  {(categories || []).map((category) => (
                     <div
                       key={category.id}
                       className="p-4 border rounded-lg flex items-center justify-between"
@@ -355,7 +357,7 @@ const RulesManagement: React.FC = () => {
                 <div>
                   <CardTitle>Matching Rules</CardTitle>
                   <p className="text-sm text-gray-600 mt-1">
-                    Showing {filteredRules.length} of {rules.length} rules
+                    Showing {filteredRules.length} of {(rules || []).length} rules
                   </p>
                 </div>
                 <div className="flex gap-4 items-end">
@@ -367,7 +369,7 @@ const RulesManagement: React.FC = () => {
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="all">All Categories</SelectItem>
-                        {categories && categories.length > 0 && categories.map((category) => (
+                        {(categories || []).length > 0 && (categories || []).map((category) => (
                           <SelectItem key={category.id} value={category.name}>
                             {category.name}
                           </SelectItem>
@@ -517,7 +519,7 @@ const RulesManagement: React.FC = () => {
                   <SelectValue placeholder="Select category" />
                 </SelectTrigger>
                 <SelectContent>
-                  {categories && categories.length > 0 ? categories.map((category) => (
+                  {(categories || []).length > 0 ? (categories || []).map((category) => (
                     <SelectItem key={category.id} value={category.name}>
                       {category.name}
                     </SelectItem>

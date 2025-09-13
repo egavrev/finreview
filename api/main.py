@@ -50,6 +50,9 @@ app.add_middleware(
 )
 
 # Database setup - PostgreSQL for production, SQLite for development
+# Define DB_PATH globally for development
+DB_PATH = Path(__file__).parent / "db.sqlite"
+
 def setup_database_with_retry():
     """Setup database with retry logic for production deployments"""
     max_retries = 5  # Increased for Cloud Run
@@ -68,7 +71,6 @@ def setup_database_with_retry():
                 engine = get_engine(DATABASE_URL)
             else:
                 # Development: Use SQLite
-                DB_PATH = Path(__file__).parent / "db.sqlite"
                 print(f"🔄 Using SQLite database: {DB_PATH}")
                 engine = get_engine(DB_PATH)
             
