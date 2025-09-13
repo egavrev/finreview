@@ -88,9 +88,16 @@ steps:
       - '-c'
       - |
         echo "Deploying frontend to Firebase Hosting..."
+        echo "=== DEBUG: Firebase Token Analysis ==="
         echo "Firebase token available: $$(test -n "$$_FIREBASE_TOKEN" && echo 'YES' || echo 'NO')"
         echo "Token length: $$(echo "$$_FIREBASE_TOKEN" | wc -c)"
-        echo "All environment variables: $$(env | grep FIREBASE)"
+        echo "Token first 20 chars: $$(echo "$$_FIREBASE_TOKEN" | cut -c1-20)"
+        echo "Token last 20 chars: $$(echo "$$_FIREBASE_TOKEN" | rev | cut -c1-20 | rev)"
+        echo "All environment variables containing FIREBASE:"
+        env | grep -i firebase || echo "No FIREBASE variables found"
+        echo "All substitution variables:"
+        env | grep "^_" || echo "No substitution variables found"
+        echo "=== END DEBUG ==="
         firebase deploy --only hosting --token $$_FIREBASE_TOKEN
         echo "Frontend deployment completed"
 
