@@ -62,12 +62,24 @@ steps:
         source /workspace/fastapi_url.env
         echo "Building frontend with API URL: $$FASTAPI_URL"
         cd frontend
+        echo "Current directory: $$(pwd)"
+        echo "Contents: $$(ls -la)"
+        echo "Source directory: $$(ls -la src/)"
+        echo "Lib directory: $$(ls -la src/lib/)"
         npm install
         NEXT_PUBLIC_API_URL=$$FASTAPI_URL npm run build
         echo "Frontend build completed"
         
+  # Build Firebase CLI image
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['build', '-f', 'cloud/Dockerfile.firebase', '-t', 'gcr.io/$PROJECT_ID/firebase:$COMMIT_SHA', '.']
+    
+  # Push Firebase CLI image
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'gcr.io/$PROJECT_ID/firebase:$COMMIT_SHA']
+        
   # Deploy frontend to Firebase Hosting
-  - name: 'gcr.io/$PROJECT_ID/firebase'
+  - name: 'gcr.io/$PROJECT_ID/firebase:$COMMIT_SHA'
     entrypoint: 'bash'
     args:
       - '-c'
@@ -79,6 +91,7 @@ steps:
 # Store images in Container Registry
 images:
   - 'gcr.io/$PROJECT_ID/finreview-app:$COMMIT_SHA'
+  - 'gcr.io/$PROJECT_ID/firebase:$COMMIT_SHA'
 
 # Build options
 options:
