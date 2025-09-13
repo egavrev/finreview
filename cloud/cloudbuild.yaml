@@ -1,4 +1,4 @@
-# Cloud Build configuration for FastAPI deployment (PostgreSQL on e2-micro VM)
+# Cloud Build configuration for FastAPI deployment (PostgreSQL on e2-micro VM) 
 steps:
   # Build FastAPI image
   - name: 'gcr.io/cloud-builders/docker'
