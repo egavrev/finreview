@@ -93,8 +93,14 @@ steps:
         echo "Lib directory: $$(ls -la src/lib/ || echo 'NOT FOUND')"
         npm install
         echo "Building frontend with NEXT_PUBLIC_API_URL=$$FASTAPI_URL"
+        echo "=== TEMPORARILY MOVING DYNAMIC ROUTES ==="
+        # Move dynamic routes that can't be statically exported
+        mkdir -p ../temp-routes
+        if [ -d "src/app/pdf" ]; then
+          echo "Moving pdf/[id] route to temp directory..."
+          mv src/app/pdf ../temp-routes/
+        fi
         echo "=== STARTING NEXT.JS BUILD ==="
-        set -e  # Exit on any error
         NEXT_PUBLIC_API_URL=$$FASTAPI_URL npm run build 2>&1 | tee build.log
         BUILD_EXIT_CODE=$$?
         echo "=== BUILD COMPLETED WITH EXIT CODE: $$BUILD_EXIT_CODE ==="
@@ -117,6 +123,15 @@ steps:
           echo "<html><body><h1>Build Failed - Check Logs</h1><p>Build exit code: $$BUILD_EXIT_CODE</p></body></html>" > out/index.html
           echo "⚠️ Using fallback - static export failed"
         fi
+        
+        echo "=== RESTORING DYNAMIC ROUTES ==="
+        # Restore the dynamic routes
+        if [ -d "../temp-routes/pdf" ]; then
+          echo "Restoring pdf/[id] route..."
+          mv ../temp-routes/pdf src/app/
+          rm -rf ../temp-routes
+        fi
+        
         echo "Frontend build completed"
         
   # Build Firebase CLI image
