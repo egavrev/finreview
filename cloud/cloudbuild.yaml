@@ -57,6 +57,9 @@ steps:
           echo "Skipping migration - tables and data already exist"
         else
           echo "🔄 Database not initialized, running migration..."
+          echo "Creating tables..."
+          PGPASSWORD=FlhugG77XDC1_0SlYUfhuzd-TkEySuwTtYFcV3luIh0 psql -h 35.214.141.13 -U finreview_user -d finreview -f /workspace/cloud/create_tables.sql
+          echo "Inserting initial data..."
           PGPASSWORD=FlhugG77XDC1_0SlYUfhuzd-TkEySuwTtYFcV3luIh0 psql -h 35.214.141.13 -U finreview_user -d finreview -f /workspace/cloud/migrate.sql
           echo "✅ Database migration completed"
         fi
