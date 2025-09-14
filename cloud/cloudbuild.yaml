@@ -93,18 +93,28 @@ steps:
         echo "Lib directory: $$(ls -la src/lib/ || echo 'NOT FOUND')"
         npm install
         echo "Building frontend with NEXT_PUBLIC_API_URL=$$FASTAPI_URL"
-        NEXT_PUBLIC_API_URL=$$FASTAPI_URL npm run build
+        echo "=== STARTING NEXT.JS BUILD ==="
+        set -e  # Exit on any error
+        NEXT_PUBLIC_API_URL=$$FASTAPI_URL npm run build 2>&1 | tee build.log
+        BUILD_EXIT_CODE=$$?
+        echo "=== BUILD COMPLETED WITH EXIT CODE: $$BUILD_EXIT_CODE ==="
+        
+        echo "=== BUILD LOG CONTENTS ==="
+        cat build.log || echo "No build log found"
+        echo "=== END BUILD LOG ==="
+        
         echo "Checking if build succeeded..."
-        if [ -d "out" ]; then
-          echo "✅ Static export successful - out directory exists"
+        if [ -d "out" ] && [ "$$(ls -A out)" ]; then
+          echo "✅ Static export successful - out directory exists and has files"
           ls -la out/
+          echo "File count in out/: $$(find out -type f | wc -l)"
         else
-          echo "❌ Static export failed - out directory missing"
-          echo "Build artifacts:"
+          echo "❌ Static export failed - out directory missing or empty"
+          echo "Build artifacts in .next/:"
           ls -la .next/ || echo "No .next directory"
-          echo "Trying to create out directory manually..."
+          echo "Creating fallback..."
           mkdir -p out
-          echo "Basic index.html created" > out/index.html
+          echo "<html><body><h1>Build Failed - Check Logs</h1><p>Build exit code: $$BUILD_EXIT_CODE</p></body></html>" > out/index.html
           echo "⚠️ Using fallback - static export failed"
         fi
         echo "Frontend build completed"
