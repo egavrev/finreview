@@ -138,7 +138,7 @@ steps:
   - name: 'gcr.io/cloud-builders/docker'
     args: ['push', 'gcr.io/$PROJECT_ID/firebase:$COMMIT_SHA']
         
-  # Get current Cloud Run URL and deploy frontend to Firebase Hosting
+  # Get current Cloud Run URL and store in Cloud Storage
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     entrypoint: 'bash'
     args:
@@ -147,6 +147,18 @@ steps:
         echo "Getting current Cloud Run service URL..."
         BACKEND_URL=$$(gcloud run services describe finreview-app --region=europe-west1 --format="value(status.url)")
         echo "✅ Backend URL found: $$BACKEND_URL"
+        echo "$$BACKEND_URL" | gsutil cp - gs://$$PROJECT_ID-build-temp/backend_url.txt
+        echo "Backend URL saved to Cloud Storage"
+        
+  # Deploy frontend to Firebase Hosting
+  - name: 'gcr.io/$PROJECT_ID/firebase:$COMMIT_SHA'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        echo "Reading backend URL from Cloud Storage..."
+        BACKEND_URL=$$(gsutil cat gs://$$PROJECT_ID-build-temp/backend_url.txt)
+        echo "✅ Backend URL: $$BACKEND_URL"
         
         echo "Setting Firebase Functions environment variables..."
         firebase functions:config:set backend.url="$$BACKEND_URL" --token "$_FIREBASE_TOKEN"
