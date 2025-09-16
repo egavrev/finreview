@@ -163,11 +163,18 @@ steps:
         ls -la
         echo "Getting current Cloud Run service URL..."
         BACKEND_URL=$$(gcloud run services describe finreview-app --region=europe-west1 --format="value(status.url)")
-        echo "Using backend URL: $$BACKEND_URL"
+        echo "✅ Backend URL found: $$BACKEND_URL"
+        echo "🔍 DEBUG: Setting Firebase Functions config with backend URL: $$BACKEND_URL"
         
         echo "Setting Firebase Functions environment variables..."
         firebase functions:config:set backend.url="$$BACKEND_URL" --token "$_FIREBASE_TOKEN"
         
+        echo "Building Firebase Functions..."
+        cd frontend/functions
+        npm run build
+        echo "✅ Firebase Functions built successfully"
+        
+        cd /workspace
         echo "Deploying Firebase Functions and Hosting..."
         firebase deploy --only functions,hosting --token "$_FIREBASE_TOKEN"
         echo "Firebase deployment completed"
