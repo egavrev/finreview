@@ -33,6 +33,9 @@ steps:
           --format="value(status.url)")
         
         echo "✅ Backend deployed at: $$BACKEND_URL"
+        echo "Saving backend URL for other steps..."
+        echo "$$BACKEND_URL" | gsutil cp - gs://$$PROJECT_ID-build-temp/backend_url.txt
+        echo "Backend URL saved to Cloud Storage"
       
   # Run database migration (idempotent)
   - name: 'postgres:15'
@@ -66,8 +69,8 @@ steps:
     args:
       - '-c'
       - |
-        echo "Getting FastAPI service URL..."
-        FASTAPI_URL=$$(gcloud run services describe finreview-app --region=europe-west1 --format="value(status.url)")
+        echo "Getting FastAPI service URL from Cloud Storage..."
+        FASTAPI_URL=$$(gsutil cat gs://$$PROJECT_ID-build-temp/backend_url.txt)
         echo "Building frontend with API URL: $$FASTAPI_URL"
         
         # Install Node.js for frontend build
@@ -138,8 +141,8 @@ steps:
     args:
       - '-c'
       - |
-        echo "Getting current Cloud Run service URL..."
-        BACKEND_URL=$$(gcloud run services describe finreview-app --region=europe-west1 --format="value(status.url)")
+        echo "Getting backend URL from Cloud Storage..."
+        BACKEND_URL=$$(gsutil cat gs://$$PROJECT_ID-build-temp/backend_url.txt)
         echo "✅ Backend URL found: $$BACKEND_URL"
         
         echo "Setting Firebase Functions environment variables..."
