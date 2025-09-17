@@ -5,7 +5,7 @@ import * as admin from 'firebase-admin';
 admin.initializeApp();
 
 // OAuth Redirect Function
-export const authCallback = functions.https.onRequest((req, res) => {
+export const authCallback = functions.https.onRequest(async (req, res) => {
   // Set CORS headers
   res.set('Access-Control-Allow-Origin', '*');
   res.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
@@ -24,23 +24,52 @@ export const authCallback = functions.https.onRequest((req, res) => {
   }
 
   try {
+    // Extract the authorization code from query parameters
+    const code = req.query.code as string;
+    if (!code) {
+      res.redirect('https://financial-apps-471615.web.app/auth/error?message=No authorization code received');
+      return;
+    }
+
+    console.log('Received OAuth code, forwarding to backend...');
+
     // Get the backend URL from Firebase config
     const backendUrl = functions.config().backend?.url || 'https://finreview-app-rq7lgavxwq-ew.a.run.app';
-    const callbackPath = '/auth/google/callback';
     
-    // Build the redirect URL with all query parameters
-    const queryString = req.url.split('?')[1] || '';
-    const redirectUrl = queryString 
-      ? `${backendUrl}${callbackPath}?${queryString}` 
-      : `${backendUrl}${callbackPath}`;
-    
-    console.log('Redirecting OAuth callback to:', redirectUrl);
-    
-    // Redirect to the backend
-    res.redirect(302, redirectUrl);
+    // Forward the OAuth code to the backend with the stable Firebase redirect URI
+    const backendResponse = await fetch(`${backendUrl}/auth/google/process`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        code: code,
+        redirect_uri: 'https://financial-apps-471615.web.app/auth/google/callback'
+      })
+    });
+
+    if (!backendResponse.ok) {
+      const errorText = await backendResponse.text();
+      console.error('Backend authentication failed:', errorText);
+      res.redirect('https://financial-apps-471615.web.app/auth/error?message=Authentication failed');
+      return;
+    }
+
+    const authResult = await backendResponse.json();
+    const token = authResult.access_token;
+
+    if (!token) {
+      console.error('No token received from backend');
+      res.redirect('https://financial-apps-471615.web.app/auth/error?message=No token received');
+      return;
+    }
+
+    // Redirect to frontend with the token
+    console.log('Authentication successful, redirecting to frontend with token');
+    res.redirect(`https://financial-apps-471615.web.app/auth/callback?token=${token}`);
     
   } catch (error) {
     console.error('Error in auth callback:', error);
-    res.status(500).send('Internal Server Error');
+    res.redirect('https://financial-apps-471615.web.app/auth/error?message=Authentication error');
   }
 });

@@ -67,7 +67,7 @@ async def get_google_user_info(access_token: str) -> Dict[str, Any]:
         return response.json()
 
 
-async def exchange_code_for_token(code: str) -> str:
+async def exchange_code_for_token(code: str, redirect_uri: str = None) -> str:
     """Exchange authorization code for access token"""
     async with httpx.AsyncClient() as client:
         data = {
@@ -75,7 +75,7 @@ async def exchange_code_for_token(code: str) -> str:
             "client_secret": GOOGLE_CLIENT_SECRET,
             "code": code,
             "grant_type": "authorization_code",
-            "redirect_uri": GOOGLE_REDIRECT_URI,
+            "redirect_uri": redirect_uri or GOOGLE_REDIRECT_URI,
         }
         
         response = await client.post(
@@ -85,7 +85,9 @@ async def exchange_code_for_token(code: str) -> str:
         )
         
         if response.status_code != 200:
-            raise AuthError("Failed to exchange code for token")
+            error_details = response.text()
+            print(f"Google OAuth token exchange failed: {error_details}")
+            raise AuthError(f"Failed to exchange code for token: {error_details}")
         
         token_data = response.json()
         return token_data["access_token"]
@@ -108,6 +110,74 @@ async def authenticate_google_user(code: str, db_path: str = "db.sqlite") -> Dic
     try:
         # Exchange code for access token
         access_token = await exchange_code_for_token(code)
+    
+        # Get user info from Google
+        user_info = await get_google_user_info(access_token)
+        
+        email = user_info.get("email")
+        if not email:
+            raise AuthError("No email found in Google user info")
+        
+        # Check if email is whitelisted
+        if not check_email_access(email):
+            raise AuthError(f"Access denied. Email {email} is not authorized.")
+        
+        # Create or update user in database
+        engine = get_engine(db_path)
+        with Session(engine) as session:
+            user = create_or_update_user(
+                session=session,
+                google_id=user_info["id"],
+                email=email,
+                name=user_info.get("name", ""),
+                picture=user_info.get("picture")
+            )
+        
+            # Create JWT token
+            token_data = {
+                "sub": str(user.id),
+                "email": user.email,
+                "name": user.name,
+                "google_id": user.google_id
+            }
+            jwt_token = create_access_token(token_data)
+            
+            return {
+                "user": {
+                    "id": user.id,
+                    "email": user.email,
+                    "name": user.name,
+                    "picture": user.picture,
+                    "created_at": user.created_at.isoformat(),
+                    "last_login": user.last_login.isoformat() if user.last_login else None
+                },
+                "access_token": jwt_token,
+                "token_type": "bearer"
+            }
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        raise
+
+
+async def authenticate_google_user_with_redirect(code: str, redirect_uri: str, db_path: str = "db.sqlite") -> Dict[str, Any]:
+    """
+    Authenticate user with Google OAuth using custom redirect URI and return user info with JWT token
+    
+    Args:
+        code: Authorization code from Google OAuth
+        redirect_uri: The redirect URI used in the original OAuth request
+        db_path: Path to the database
+        
+    Returns:
+        Dictionary with user info and access token
+        
+    Raises:
+        AuthError: If authentication fails or email is not whitelisted
+    """
+    try:
+        # Exchange code for access token using custom redirect URI
+        access_token = await exchange_code_for_token(code, redirect_uri)
     
         # Get user info from Google
         user_info = await get_google_user_info(access_token)

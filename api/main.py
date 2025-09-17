@@ -32,7 +32,7 @@ from sql_utils import (
 from pdf_processor import PDFSummary, Operation
 from api.rules_api import router as rules_router
 from rules_models import MatchingRule, RuleCategory, RuleMatchLog
-from auth import authenticate_google_user, get_current_user, get_google_oauth_url, AuthError, security
+from auth import authenticate_google_user, authenticate_google_user_with_redirect, get_current_user, get_google_oauth_url, AuthError, security
 
 app = FastAPI(title="Financial Review API", version="1.0.0")
 
@@ -170,6 +170,35 @@ async def google_callback(code: str = Query(...)):
         # Redirect to frontend with error
         error_url = f"{frontend_url}/auth/error?message=Authentication failed"
         return RedirectResponse(url=error_url)
+
+
+@app.post("/auth/google/process")
+async def google_process_oauth(request_data: dict):
+    """Process Google OAuth code with custom redirect URI"""
+    try:
+        code = request_data.get("code")
+        redirect_uri = request_data.get("redirect_uri")
+        
+        if not code:
+            raise HTTPException(status_code=400, detail="Missing authorization code")
+        if not redirect_uri:
+            raise HTTPException(status_code=400, detail="Missing redirect URI")
+        
+        # Use the custom redirect URI for token exchange
+        result = await authenticate_google_user_with_redirect(code, redirect_uri, str(DB_PATH))
+        
+        return {
+            "success": True,
+            "access_token": result["access_token"],
+            "user": result["user"]
+        }
+        
+    except AuthError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail="Authentication failed")
 
 
 def get_current_user_with_db_path(credentials: HTTPAuthorizationCredentials = Depends(security)):
