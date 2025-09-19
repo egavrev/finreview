@@ -84,7 +84,7 @@ steps:
         echo "Exported NEXT_PUBLIC_API_URL=$$NEXT_PUBLIC_API_URL"
         
         # Install Node.js for frontend build
-        curl -fsSL https://deb.nodesource.com/setup_18.x | bash -
+        curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
         apt-get install -y nodejs
         cd frontend
         npm install

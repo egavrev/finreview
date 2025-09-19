@@ -2,8 +2,8 @@
 // This file handles the API base URL configuration for different environments
 
 // Get API base URL from environment variable or fallback to localhost
-//export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000';
-export const API_BASE_URL = 'https://finreview-app-rq7lgavxwq-ew.a.run.app';
+export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:8000';
+// Temporarily hardcoded for debugging - now using environment variable
 
 // Helper function to build API URLs
 export const buildApiUrl = (endpoint: string): string => {
