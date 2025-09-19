@@ -93,7 +93,7 @@ steps:
           mv src/app/pdf ../temp-routes/
         fi
         echo "=== STARTING NEXT.JS BUILD ==="
-        NEXT_PUBLIC_API_URL=$$FASTAPI_URL npm run build 2>&1 | tee build.log
+        NEXT_PUBLIC_API_URL=$FASTAPI_URL npm run build 2>&1 | tee build.log
         BUILD_EXIT_CODE=$$?
         echo "=== BUILD COMPLETED WITH EXIT CODE: $$BUILD_EXIT_CODE ==="
         
