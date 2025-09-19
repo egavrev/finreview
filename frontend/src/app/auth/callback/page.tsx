@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
+import { buildApiUrl } from '@/lib/api';
 
 export default function AuthCallback() {
   const router = useRouter();
@@ -24,7 +25,7 @@ export default function AuthCallback() {
           console.log('Token found in URL, fetching user info...');
           
           // Token exists in URL but not in context, fetch user info
-          const response = await fetch('http://localhost:8000/auth/me', {
+          const response = await fetch(buildApiUrl('auth/me'), {
             headers: {
               'Authorization': `Bearer ${urlToken}`,
             },

@@ -1,6 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import { buildApiUrl } from '@/lib/api';
 
 interface User {
   id: number;
@@ -52,7 +53,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         if (storedToken) {
           setToken(storedToken);
           // Verify token by fetching user info
-          const response = await fetch('http://localhost:8000/auth/me', {
+          const response = await fetch(buildApiUrl('auth/me'), {
             headers: {
               'Authorization': `Bearer ${storedToken}`,
             },
@@ -82,7 +83,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const login = async () => {
     try {
       // Get the OAuth URL from the backend
-      const response = await fetch('http://localhost:8000/auth/google');
+      const response = await fetch(buildApiUrl('auth/google'));
       const data = await response.json();
       
       if (data.auth_url) {
@@ -104,7 +105,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     localStorage.removeItem('auth_token');
     
     // Call logout endpoint
-    fetch('http://localhost:8000/auth/logout', {
+    fetch(buildApiUrl('auth/logout'), {
       method: 'POST',
     }).catch(console.error);
   };
@@ -126,7 +127,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
             localStorage.setItem('auth_token', token);
             
             // Fetch user info to complete authentication
-            fetch('http://localhost:8000/auth/me', {
+            fetch(buildApiUrl('auth/me'), {
               headers: {
                 'Authorization': `Bearer ${token}`,
               },
