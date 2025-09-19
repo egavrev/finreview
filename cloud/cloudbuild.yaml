@@ -34,8 +34,12 @@ steps:
         
         echo "✅ Backend deployed at: $$BACKEND_URL"
         echo "Saving backend URL for other steps..."
-        echo "$$BACKEND_URL" | gsutil cp - gs://$PROJECT_ID-build-temp/backend_url.txt
-        echo "Backend URL saved to Cloud Storage"
+        
+        # Save backend URL to a file for next steps
+        echo "$$BACKEND_URL" > /workspace/backend_url.txt
+        echo "Backend URL saved to workspace file"
+        echo "DEBUG: File contents: $$(cat /workspace/backend_url.txt)"
+        echo "DEBUG: Workspace contents: $$(ls -la /workspace/)"
       
   # Run database migration (idempotent)
   - name: 'postgres:15'
@@ -69,8 +73,10 @@ steps:
     args:
       - '-c'
       - |
-        echo "Getting FastAPI service URL from Cloud Storage..."
-        FASTAPI_URL=$$(gsutil cat gs://$PROJECT_ID-build-temp/backend_url.txt)
+        echo "Getting FastAPI service URL from workspace file..."
+        echo "DEBUG: Workspace contents before reading: $$(ls -la /workspace/)"
+        echo "DEBUG: backend_url.txt exists: $$(test -f /workspace/backend_url.txt && echo 'YES' || echo 'NO')"
+        FASTAPI_URL=$$(cat /workspace/backend_url.txt)
         echo "Building frontend with API URL: $$FASTAPI_URL"
         
         # Install Node.js for frontend build
@@ -134,8 +140,8 @@ steps:
     args:
       - '-c'
       - |
-        echo "Getting backend URL from Cloud Storage..."
-        BACKEND_URL=$$(gsutil cat gs://$PROJECT_ID-build-temp/backend_url.txt)
+        echo "Getting backend URL from workspace file..."
+        BACKEND_URL=$$(cat /workspace/backend_url.txt)
         echo "✅ Backend URL found: $$BACKEND_URL"
         
         echo "Setting Firebase Functions environment variables..."
