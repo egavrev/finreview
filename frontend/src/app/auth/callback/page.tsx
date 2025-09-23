@@ -10,19 +10,39 @@ export default function AuthCallback() {
   const searchParams = useSearchParams();
   const { token, setToken, setUser } = useAuth();
   const [isProcessing, setIsProcessing] = useState(true);
+  
+  // Debug flag: enable via ?debug=1 or localStorage.setItem('finreview_debug','1')
+  const isDebugEnabled = (() => {
+    if (typeof window === 'undefined') return false;
+    try {
+      const urlHasDebug = new URLSearchParams(window.location.search).has('debug');
+      const lsDebug = localStorage.getItem('finreview_debug') === '1';
+      return urlHasDebug || lsDebug;
+    } catch {
+      return false;
+    }
+  })();
 
   useEffect(() => {
     const processCallback = async () => {
       try {
-        console.log('Processing OAuth callback...');
+        if (isDebugEnabled && typeof window !== 'undefined') {
+          // eslint-disable-next-line no-console
+          console.log('[Callback] Processing OAuth callback. href:', window.location.href);
+        }
         
         // Get token from URL parameters
         const urlToken = searchParams.get('token');
-        console.log('URL token:', urlToken ? 'Found' : 'Not found');
-        console.log('Current context token:', token ? 'Found' : 'Not found');
+        if (isDebugEnabled) {
+          // eslint-disable-next-line no-console
+          console.log('[Callback] URL token present:', Boolean(urlToken), 'Context token present:', Boolean(token));
+        }
         
         if (urlToken && !token) {
-          console.log('Token found in URL, fetching user info...');
+          if (isDebugEnabled) {
+            // eslint-disable-next-line no-console
+            console.log('[Callback] Token in URL. Fetching user info via auth/me...');
+          }
           
           // Token exists in URL but not in context, fetch user info
           const response = await fetch(buildApiUrl('auth/me'), {
@@ -31,11 +51,17 @@ export default function AuthCallback() {
             },
           });
 
-          console.log('User info response status:', response.status);
+          if (isDebugEnabled) {
+            // eslint-disable-next-line no-console
+            console.log('[Callback] auth/me status:', response.status);
+          }
 
           if (response.ok) {
             const userData = await response.json();
-            console.log('User data received:', userData);
+            if (isDebugEnabled) {
+              // eslint-disable-next-line no-console
+              console.log('[Callback] User data:', userData);
+            }
             
             setUser(userData);
             setToken(urlToken);
@@ -46,20 +72,33 @@ export default function AuthCallback() {
             router.push('/');
           } else {
             // Invalid token, redirect to error
-            console.error('Invalid token response:', response.status);
+            if (isDebugEnabled) {
+              const body = await response.text().catch(() => '<no body>');
+              // eslint-disable-next-line no-console
+              console.error('[Callback] auth/me failed. Status:', response.status, 'Body:', body);
+            }
             router.push('/auth/error?message=Invalid token');
           }
         } else if (token) {
           // Already authenticated, redirect to dashboard
-          console.log('Already authenticated, redirecting to dashboard');
+          if (isDebugEnabled) {
+            // eslint-disable-next-line no-console
+            console.log('[Callback] Context already has token. Redirecting to /.');
+          }
           router.push('/');
         } else {
           // No token found, redirect to error
-          console.error('No token found in URL or context');
+          if (isDebugEnabled) {
+            // eslint-disable-next-line no-console
+            console.error('[Callback] No token found in URL or context.');
+          }
           router.push('/auth/error?message=No authentication token found');
         }
       } catch (error) {
-        console.error('Callback processing error:', error);
+        if (isDebugEnabled) {
+          // eslint-disable-next-line no-console
+          console.error('[Callback] Processing error:', error);
+        }
         router.push('/auth/error?message=Authentication failed');
       } finally {
         setIsProcessing(false);
