@@ -15,22 +15,31 @@ var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (
 }) : function(o, v) {
     o["default"] = v;
 });
-var __importStar = (this && this.__importStar) || function (mod) {
-    if (mod && mod.__esModule) return mod;
-    var result = {};
-    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
-    __setModuleDefault(result, mod);
-    return result;
-};
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.authCallback = void 0;
-const functions = __importStar(require("firebase-functions"));
+const https_1 = require("firebase-functions/v2/https");
 const admin = __importStar(require("firebase-admin"));
 // Initialize Firebase Admin
 admin.initializeApp();
-// OAuth Redirect Function
-exports.authCallback = functions.https.onRequest(async (req, res) => {
-    var _a;
+// OAuth Redirect Function (2nd Gen)
+exports.authCallback = (0, https_1.onRequest)(async (req, res) => {
     // Set CORS headers
     res.set('Access-Control-Allow-Origin', '*');
     res.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
@@ -53,8 +62,8 @@ exports.authCallback = functions.https.onRequest(async (req, res) => {
             return;
         }
         console.log('Received OAuth code, forwarding to backend...');
-        // Get the backend URL from Firebase config
-        const backendUrl = ((_a = functions.config().backend) === null || _a === void 0 ? void 0 : _a.url) || 'https://finreview-app-rq7lgavxwq-ew.a.run.app';
+        // Get the backend URL from environment (Cloud Functions v2 supports dotenv)
+        const backendUrl = process.env.BACKEND_URL || 'https://finreview-app-rq7lgavxwq-ew.a.run.app';
         // Forward the OAuth code to the backend with the stable Firebase redirect URI
         const backendResponse = await fetch(`${backendUrl}/auth/google/process`, {
             method: 'POST',
