@@ -27,8 +27,7 @@ steps:
           --timeout=900 \
           --set-env-vars=DATABASE_URL=postgresql://finreview_user:FlhugG77XDC1_0SlYUfhuzd-TkEySuwTtYFcV3luIh0@35.214.141.13:5432/finreview \
           --set-env-vars=ENVIRONMENT=production \
-          --set-env-vars=FRONTEND_URL=https://financial-apps-471615.web.app \
-          --set-env-vars=CORS_ORIGINS=https://financial-apps-471615.web.app,https://financial-apps-471615.firebaseapp.com \
+          --set-env-vars=FRONTEND_URL=https://financial-apps-471615.web.app,CORS_ORIGINS=https://financial-apps-471615.web.app\,https://financial-apps-471615.firebaseapp.com \
           --set-env-vars=GOOGLE_REDIRECT_URI=https://financial-apps-471615.web.app/auth/google/callback \
           --set-secrets=GOOGLE_CLIENT_ID=google-client-id:latest,GOOGLE_CLIENT_SECRET=google-client-secret:latest,JWT_SECRET_KEY=jwt-secret-key:latest \
           --format="value(status.url)")
