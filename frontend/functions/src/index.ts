@@ -1,11 +1,11 @@
-import * as functions from 'firebase-functions';
+import { onRequest } from 'firebase-functions/v2/https';
 import * as admin from 'firebase-admin';
 
 // Initialize Firebase Admin
 admin.initializeApp();
 
-// OAuth Redirect Function
-export const authCallback = functions.https.onRequest(async (req, res) => {
+// OAuth Redirect Function (2nd Gen)
+export const authCallback = onRequest(async (req, res) => {
   // Set CORS headers
   res.set('Access-Control-Allow-Origin', '*');
   res.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
@@ -33,8 +33,8 @@ export const authCallback = functions.https.onRequest(async (req, res) => {
 
     console.log('Received OAuth code, forwarding to backend...');
 
-    // Get the backend URL from Firebase config
-    const backendUrl = functions.config().backend?.url || 'https://finreview-app-rq7lgavxwq-ew.a.run.app';
+    // Get the backend URL from environment (Cloud Functions v2 supports dotenv)
+    const backendUrl = process.env.BACKEND_URL || 'https://finreview-app-rq7lgavxwq-ew.a.run.app';
     
     // Forward the OAuth code to the backend with the stable Firebase redirect URI
     const backendResponse = await fetch(`${backendUrl}/auth/google/process`, {
