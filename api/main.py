@@ -213,8 +213,8 @@ async def google_process_oauth(request_data: dict):
 
 
 def get_current_user_with_db_path(credentials: HTTPAuthorizationCredentials = Depends(security)):
-    """Dependency to get current user with correct database path"""
-    return get_current_user(credentials, db_path=str(DB_PATH))
+    """Dependency to get current user with correct database path or URL (Postgres in prod)."""
+    return get_current_user(credentials, db_path=_auth_db_path_or_url())
 
 @app.get("/auth/me")
 async def get_current_user_info(current_user: User = Depends(get_current_user_with_db_path)):

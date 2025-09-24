@@ -14,6 +14,7 @@ from pathlib import Path
 sys.path.append(str(Path(__file__).parent.parent))
 
 from sql_utils import get_engine, get_operations_with_null_types, assign_operation_type, get_operation_types, OperationRow, User
+import os
 from auth import get_current_user, security
 from rules_manager import (
     # Category management
@@ -213,17 +214,25 @@ class RuleSearchParams(BaseModel):
     max_weight: Optional[int] = Field(None, ge=1, le=100, description="Maximum weight filter")
 
 
+def _auth_db_path_or_url() -> str:
+    """Return DB URL for production or local SQLite path for dev."""
+    db_url = os.getenv("DATABASE_URL")
+    if os.getenv("ENVIRONMENT") == "production" and db_url:
+        return db_url
+    return str(Path(__file__).parent / "db.sqlite")
+
+
 # Dependency to get database session
 def get_session():
-    engine = get_engine(Path(__file__).parent / "db.sqlite")  # Database in api/ directory
+    engine = get_engine(_auth_db_path_or_url())
     with Session(engine) as session:
         yield session
 
 
 # Authentication dependency for rules API
 def get_current_user_with_db_path(credentials = Depends(security)):
-    """Dependency to get current user with correct database path"""
-    return get_current_user(credentials, db_path=str(Path(__file__).parent / "db.sqlite"))
+    """Dependency to get current user with correct database path or URL."""
+    return get_current_user(credentials, db_path=_auth_db_path_or_url())
 
 
 # Category endpoints
