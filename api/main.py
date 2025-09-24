@@ -251,7 +251,7 @@ async def upload_pdf(
     
     try:
         # Process the PDF with deduplication enabled
-        pdf_id, stored_count, skipped_count = process_and_store(tmp_path, DB_PATH, skip_duplicates=True)
+        pdf_id, stored_count, skipped_count = process_and_store(tmp_path, _auth_db_path_or_url(), skip_duplicates=True)
         
         # Get the processed data
         pdf_record = get_pdf_by_path(session, tmp_path)
