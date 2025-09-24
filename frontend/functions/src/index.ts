@@ -5,7 +5,9 @@ import * as admin from 'firebase-admin';
 admin.initializeApp();
 
 // OAuth Redirect Function (2nd Gen)
-export const authCallback = onRequest(async (req, res) => {
+export const authCallback = onRequest({
+  invoker: 'public'
+}, async (req, res) => {
   // Set CORS headers
   res.set('Access-Control-Allow-Origin', '*');
   res.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');

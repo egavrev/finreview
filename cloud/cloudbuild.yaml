@@ -30,7 +30,7 @@ steps:
           --set-env-vars=FRONTEND_URL=https://financial-apps-471615.web.app \
           --set-env-vars=CORS_ORIGINS=https://financial-apps-471615.web.app \
           --set-env-vars=GOOGLE_REDIRECT_URI=https://financial-apps-471615.web.app/auth/google/callback \
-          --set-secrets=GOOGLE_CLIENT_ID=google-client-id:latest,GOOGLE_CLIENT_SECRET=google-client-secret:latest,JWT_SECRET_KEY=jwt-secret-key:latest \
+          --set-secrets=GOOGLE_CLIENT_ID=google-client-id:latest,GOOGLE_CLIENT_SECRET=google-client-secret:latest,JWT_SECRET_KEY=jwt-secret-key:latest,ALLOWED_EMAILS=allowed-emails:latest \
           --format="value(status.url)")
         
         echo "✅ Backend deployed at: $$BACKEND_URL"

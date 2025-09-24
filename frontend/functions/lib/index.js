@@ -39,7 +39,9 @@ const admin = __importStar(require("firebase-admin"));
 // Initialize Firebase Admin
 admin.initializeApp();
 // OAuth Redirect Function (2nd Gen)
-exports.authCallback = (0, https_1.onRequest)(async (req, res) => {
+exports.authCallback = (0, https_1.onRequest)({
+    invoker: 'public'
+}, async (req, res) => {
     // Set CORS headers
     res.set('Access-Control-Allow-Origin', '*');
     res.set('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
