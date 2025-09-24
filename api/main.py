@@ -152,7 +152,7 @@ async def google_auth():
 async def google_callback(code: str = Query(...)):
     """Handle Google OAuth callback"""
     try:
-        result = await authenticate_google_user(code, str(DB_PATH))
+        result = await authenticate_google_user(code, _auth_db_path_or_url())
         
         # Redirect to frontend with token in URL parameter
         token = result["access_token"]
@@ -172,6 +172,17 @@ async def google_callback(code: str = Query(...)):
         return RedirectResponse(url=error_url)
 
 
+def _auth_db_path_or_url() -> str:
+    """Return the database location for auth flows.
+
+    In production, prefer the DATABASE_URL (PostgreSQL). Otherwise use local SQLite path.
+    """
+    db_url = os.getenv("DATABASE_URL")
+    if os.getenv("ENVIRONMENT") == "production" and db_url:
+        return db_url
+    return str(DB_PATH)
+
+
 @app.post("/auth/google/process")
 async def google_process_oauth(request_data: dict):
     """Process Google OAuth code with custom redirect URI"""
@@ -185,7 +196,7 @@ async def google_process_oauth(request_data: dict):
             raise HTTPException(status_code=400, detail="Missing redirect URI")
         
         # Use the custom redirect URI for token exchange
-        result = await authenticate_google_user_with_redirect(code, redirect_uri, str(DB_PATH))
+        result = await authenticate_google_user_with_redirect(code, redirect_uri, _auth_db_path_or_url())
         
         return {
             "success": True,
