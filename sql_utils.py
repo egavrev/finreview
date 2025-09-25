@@ -863,7 +863,7 @@ def get_available_months(session: Session) -> List[dict]:
         {
             "year": int(year),
             "month": int(month),
-            "label": f"{year}-{month:02d}"
+            "label": f"{int(year)}-{int(month):02d}"
         }
         for year, month in results
         if year is not None and month is not None

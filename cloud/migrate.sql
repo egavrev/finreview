@@ -29,212 +29,92 @@ ON CONFLICT (name) DO NOTHING;
 -- ==============================================
 
 -- Insert initial rule categories
-INSERT INTO rulecategory (name, description, created_at) VALUES
-('Income Patterns', 'Rules for identifying income transactions', NOW()),
-('Expense Patterns', 'Rules for identifying expense transactions', NOW()),
-('Transfer Patterns', 'Rules for identifying transfer transactions', NOW()),
-('Investment Patterns', 'Rules for identifying investment transactions', NOW()),
-('Tax Patterns', 'Rules for identifying tax-related transactions', NOW()),
-('Insurance Patterns', 'Rules for identifying insurance transactions', NOW()),
-('Medical Patterns', 'Rules for identifying medical transactions', NOW()),
-('Education Patterns', 'Rules for identifying education transactions', NOW()),
-('Transportation Patterns', 'Rules for identifying transportation transactions', NOW()),
-('Entertainment Patterns', 'Rules for identifying entertainment transactions', NOW()),
-('Utilities Patterns', 'Rules for identifying utility transactions', NOW()),
-('Shopping Patterns', 'Rules for identifying shopping transactions', NOW()),
-('Bank Fee Patterns', 'Rules for identifying bank fee transactions', NOW()),
-('Cash Patterns', 'Rules for identifying cash transactions', NOW()),
-('Deposit Patterns', 'Rules for identifying deposit transactions', NOW())
+INSERT INTO rulecategory (name, description, is_active, created_at) VALUES
+('Income Patterns', 'Rules for identifying income transactions', true, NOW()),
+('Expense Patterns', 'Rules for identifying expense transactions', true, NOW()),
+('Transfer Patterns', 'Rules for identifying transfer transactions', true, NOW()),
+('Investment Patterns', 'Rules for identifying investment transactions', true, NOW()),
+('Tax Patterns', 'Rules for identifying tax-related transactions', true, NOW()),
+('Insurance Patterns', 'Rules for identifying insurance transactions', true, NOW()),
+('Medical Patterns', 'Rules for identifying medical transactions', true, NOW()),
+('Education Patterns', 'Rules for identifying education transactions', true, NOW()),
+('Transportation Patterns', 'Rules for identifying transportation transactions', true, NOW()),
+('Entertainment Patterns', 'Rules for identifying entertainment transactions', true, NOW()),
+('Utilities Patterns', 'Rules for identifying utility transactions', true, NOW()),
+('Shopping Patterns', 'Rules for identifying shopping transactions', true, NOW()),
+('Bank Fee Patterns', 'Rules for identifying bank fee transactions', true, NOW()),
+('Cash Patterns', 'Rules for identifying cash transactions', true, NOW()),
+('Deposit Patterns', 'Rules for identifying deposit transactions', true, NOW())
 ON CONFLICT (name) DO NOTHING;
 
 -- ==============================================
 -- INITIAL DATA FOR MATCHING RULES
 -- ==============================================
 
--- Income Rules
-INSERT INTO matchingrule (category_id, rule_name, pattern, operation_type_id, priority, is_active, created_at)
-SELECT 
-    rc.id,
-    'Salary Income',
-    'salary|wage|payroll|income|earnings',
-    ot.id,
-    1,
-    true,
-    NOW()
-FROM rulecategory rc, operationtype ot 
-WHERE rc.name = 'Income Patterns' AND ot.name = 'Income';
+-- Income Rules (category matches operation type name)
+INSERT INTO matchingrule (rule_type, category, pattern, weight, priority, is_active, created_at, created_by, usage_count, success_count)
+VALUES ('keyword', 'Income', 'salary|wage|payroll|income|earnings', 85, 1, true, NOW(), '', 0, 0)
+ON CONFLICT DO NOTHING;
 
-INSERT INTO matchingrule (category_id, rule_name, pattern, operation_type_id, priority, is_active, created_at)
-SELECT 
-    rc.id,
-    'Business Income',
-    'business|freelance|contract|consulting',
-    ot.id,
-    2,
-    true,
-    NOW()
-FROM rulecategory rc, operationtype ot 
-WHERE rc.name = 'Income Patterns' AND ot.name = 'Income';
+INSERT INTO matchingrule (rule_type, category, pattern, weight, priority, is_active, created_at, created_by, usage_count, success_count)
+VALUES ('keyword', 'Income', 'business|freelance|contract|consulting', 85, 2, true, NOW(), '', 0, 0)
+ON CONFLICT DO NOTHING;
 
 -- Expense Rules
-INSERT INTO matchingrule (category_id, rule_name, pattern, operation_type_id, priority, is_active, created_at)
-SELECT 
-    rc.id,
-    'Grocery Shopping',
-    'grocery|supermarket|food|market',
-    ot.id,
-    1,
-    true,
-    NOW()
-FROM rulecategory rc, operationtype ot 
-WHERE rc.name = 'Expense Patterns' AND ot.name = 'Expense';
+INSERT INTO matchingrule (rule_type, category, pattern, weight, priority, is_active, created_at, created_by, usage_count, success_count)
+VALUES ('keyword', 'Expense', 'grocery|supermarket|food|market', 85, 1, true, NOW(), '', 0, 0)
+ON CONFLICT DO NOTHING;
 
-INSERT INTO matchingrule (category_id, rule_name, pattern, operation_type_id, priority, is_active, created_at)
-SELECT 
-    rc.id,
-    'Restaurant Expenses',
-    'restaurant|cafe|dining|food|eat',
-    ot.id,
-    2,
-    true,
-    NOW()
-FROM rulecategory rc, operationtype ot 
-WHERE rc.name = 'Expense Patterns' AND ot.name = 'Entertainment';
+INSERT INTO matchingrule (rule_type, category, pattern, weight, priority, is_active, created_at, created_by, usage_count, success_count)
+VALUES ('keyword', 'Entertainment', 'restaurant|cafe|dining|food|eat', 85, 2, true, NOW(), '', 0, 0)
+ON CONFLICT DO NOTHING;
 
-INSERT INTO matchingrule (category_id, rule_name, pattern, operation_type_id, priority, is_active, created_at)
-SELECT 
-    rc.id,
-    'Gas Station',
-    'gas|fuel|petrol|station|shell|bp|esso',
-    ot.id,
-    1,
-    true,
-    NOW()
-FROM rulecategory rc, operationtype ot 
-WHERE rc.name = 'Transportation Patterns' AND ot.name = 'Transportation';
+INSERT INTO matchingrule (rule_type, category, pattern, weight, priority, is_active, created_at, created_by, usage_count, success_count)
+VALUES ('keyword', 'Transportation', 'gas|fuel|petrol|station|shell|bp|esso', 85, 1, true, NOW(), '', 0, 0)
+ON CONFLICT DO NOTHING;
 
-INSERT INTO matchingrule (category_id, rule_name, pattern, operation_type_id, priority, is_active, created_at)
-SELECT 
-    rc.id,
-    'Utilities Bills',
-    'electric|water|internet|phone|cable|utility',
-    ot.id,
-    1,
-    true,
-    NOW()
-FROM rulecategory rc, operationtype ot 
-WHERE rc.name = 'Utilities Patterns' AND ot.name = 'Utilities';
+INSERT INTO matchingrule (rule_type, category, pattern, weight, priority, is_active, created_at, created_by, usage_count, success_count)
+VALUES ('keyword', 'Utilities', 'electric|water|internet|phone|cable|utility', 85, 1, true, NOW(), '', 0, 0)
+ON CONFLICT DO NOTHING;
 
-INSERT INTO matchingrule (category_id, rule_name, pattern, operation_type_id, priority, is_active, created_at)
-SELECT 
-    rc.id,
-    'Medical Expenses',
-    'medical|doctor|hospital|pharmacy|health|clinic',
-    ot.id,
-    1,
-    true,
-    NOW()
-FROM rulecategory rc, operationtype ot 
-WHERE rc.name = 'Medical Patterns' AND ot.name = 'Medical';
+INSERT INTO matchingrule (rule_type, category, pattern, weight, priority, is_active, created_at, created_by, usage_count, success_count)
+VALUES ('keyword', 'Medical', 'medical|doctor|hospital|pharmacy|health|clinic', 85, 1, true, NOW(), '', 0, 0)
+ON CONFLICT DO NOTHING;
 
-INSERT INTO matchingrule (category_id, rule_name, pattern, operation_type_id, priority, is_active, created_at)
-SELECT 
-    rc.id,
-    'Insurance Payments',
-    'insurance|premium|coverage',
-    ot.id,
-    1,
-    true,
-    NOW()
-FROM rulecategory rc, operationtype ot 
-WHERE rc.name = 'Insurance Patterns' AND ot.name = 'Insurance';
+INSERT INTO matchingrule (rule_type, category, pattern, weight, priority, is_active, created_at, created_by, usage_count, success_count)
+VALUES ('keyword', 'Insurance', 'insurance|premium|coverage', 85, 1, true, NOW(), '', 0, 0)
+ON CONFLICT DO NOTHING;
 
-INSERT INTO matchingrule (category_id, rule_name, pattern, operation_type_id, priority, is_active, created_at)
-SELECT 
-    rc.id,
-    'Tax Payments',
-    'tax|irs|revenue|fiscal',
-    ot.id,
-    1,
-    true,
-    NOW()
-FROM rulecategory rc, operationtype ot 
-WHERE rc.name = 'Tax Patterns' AND ot.name = 'Tax';
+INSERT INTO matchingrule (rule_type, category, pattern, weight, priority, is_active, created_at, created_by, usage_count, success_count)
+VALUES ('keyword', 'Tax', 'tax|irs|revenue|fiscal', 85, 1, true, NOW(), '', 0, 0)
+ON CONFLICT DO NOTHING;
 
-INSERT INTO matchingrule (category_id, rule_name, pattern, operation_type_id, priority, is_active, created_at)
-SELECT 
-    rc.id,
-    'Bank Fees',
-    'fee|charge|maintenance|service',
-    ot.id,
-    1,
-    true,
-    NOW()
-FROM rulecategory rc, operationtype ot 
-WHERE rc.name = 'Bank Fee Patterns' AND ot.name = 'Bank Fees';
+INSERT INTO matchingrule (rule_type, category, pattern, weight, priority, is_active, created_at, created_by, usage_count, success_count)
+VALUES ('keyword', 'Bank Fees', 'fee|charge|maintenance|service', 85, 1, true, NOW(), '', 0, 0)
+ON CONFLICT DO NOTHING;
 
-INSERT INTO matchingrule (category_id, rule_name, pattern, operation_type_id, priority, is_active, created_at)
-SELECT 
-    rc.id,
-    'ATM Withdrawals',
-    'atm|withdrawal|cash|money',
-    ot.id,
-    1,
-    true,
-    NOW()
-FROM rulecategory rc, operationtype ot 
-WHERE rc.name = 'Cash Patterns' AND ot.name = 'Cash Withdrawal';
+INSERT INTO matchingrule (rule_type, category, pattern, weight, priority, is_active, created_at, created_by, usage_count, success_count)
+VALUES ('keyword', 'Cash Withdrawal', 'atm|withdrawal|cash|money', 85, 1, true, NOW(), '', 0, 0)
+ON CONFLICT DO NOTHING;
 
-INSERT INTO matchingrule (category_id, rule_name, pattern, operation_type_id, priority, is_active, created_at)
-SELECT 
-    rc.id,
-    'Online Shopping',
-    'amazon|ebay|shop|store|purchase|buy',
-    ot.id,
-    1,
-    true,
-    NOW()
-FROM rulecategory rc, operationtype ot 
-WHERE rc.name = 'Shopping Patterns' AND ot.name = 'Shopping';
+INSERT INTO matchingrule (rule_type, category, pattern, weight, priority, is_active, created_at, created_by, usage_count, success_count)
+VALUES ('keyword', 'Shopping', 'amazon|ebay|shop|store|purchase|buy', 85, 1, true, NOW(), '', 0, 0)
+ON CONFLICT DO NOTHING;
 
 -- Transfer Rules
-INSERT INTO matchingrule (category_id, rule_name, pattern, operation_type_id, priority, is_active, created_at)
-SELECT 
-    rc.id,
-    'Account Transfers',
-    'transfer|move|between|account',
-    ot.id,
-    1,
-    true,
-    NOW()
-FROM rulecategory rc, operationtype ot 
-WHERE rc.name = 'Transfer Patterns' AND ot.name = 'Transfer';
+INSERT INTO matchingrule (rule_type, category, pattern, weight, priority, is_active, created_at, created_by, usage_count, success_count)
+VALUES ('keyword', 'Transfer', 'transfer|move|between|account', 85, 1, true, NOW(), '', 0, 0)
+ON CONFLICT DO NOTHING;
 
 -- Investment Rules
-INSERT INTO matchingrule (category_id, rule_name, pattern, operation_type_id, priority, is_active, created_at)
-SELECT 
-    rc.id,
-    'Investment Transactions',
-    'investment|stock|bond|fund|portfolio|trading',
-    ot.id,
-    1,
-    true,
-    NOW()
-FROM rulecategory rc, operationtype ot 
-WHERE rc.name = 'Investment Patterns' AND ot.name = 'Investment';
+INSERT INTO matchingrule (rule_type, category, pattern, weight, priority, is_active, created_at, created_by, usage_count, success_count)
+VALUES ('keyword', 'Investment', 'investment|stock|bond|fund|portfolio|trading', 85, 1, true, NOW(), '', 0, 0)
+ON CONFLICT DO NOTHING;
 
 -- Deposit Rules
-INSERT INTO matchingrule (category_id, rule_name, pattern, operation_type_id, priority, is_active, created_at)
-SELECT 
-    rc.id,
-    'Cash Deposits',
-    'deposit|cash in|money in',
-    ot.id,
-    1,
-    true,
-    NOW()
-FROM rulecategory rc, operationtype ot 
-WHERE rc.name = 'Deposit Patterns' AND ot.name = 'Deposit';
+INSERT INTO matchingrule (rule_type, category, pattern, weight, priority, is_active, created_at, created_by, usage_count, success_count)
+VALUES ('keyword', 'Deposit', 'deposit|cash in|money in', 85, 1, true, NOW(), '', 0, 0)
+ON CONFLICT DO NOTHING;
 
 -- ==============================================
 -- VERIFICATION QUERIES
@@ -246,6 +126,31 @@ UNION ALL
 SELECT 'Rule Categories' as table_name, COUNT(*) as count FROM rulecategory
 UNION ALL
 SELECT 'Matching Rules' as table_name, COUNT(*) as count FROM matchingrule;
+
+-- ==============================================
+-- SCHEMA ALIGNMENT FOR operationrow (idempotent)
+-- ==============================================
+
+-- Add new columns used by application models and backfill from legacy fields
+ALTER TABLE operationrow ADD COLUMN IF NOT EXISTS transaction_date TIMESTAMP;
+
+ALTER TABLE operationrow ADD COLUMN IF NOT EXISTS processed_date TIMESTAMP;
+
+ALTER TABLE operationrow ADD COLUMN IF NOT EXISTS description TEXT;
+
+ALTER TABLE operationrow ADD COLUMN IF NOT EXISTS amount_lei DOUBLE PRECISION;
+
+ALTER TABLE operationrow ADD COLUMN IF NOT EXISTS type_id INTEGER;
+
+-- Helpful indexes for new columns
+CREATE INDEX IF NOT EXISTS idx_operationrow_transaction_date ON operationrow(transaction_date);
+CREATE INDEX IF NOT EXISTS idx_operationrow_type_id_new ON operationrow(type_id);
+
+-- NOTE: After verifying the app runs end-to-end in production, you may drop legacy columns:
+-- ALTER TABLE operationrow DROP COLUMN operation_date;
+-- ALTER TABLE operationrow DROP COLUMN operation_description;
+-- ALTER TABLE operationrow DROP COLUMN operation_amount;
+-- ALTER TABLE operationrow DROP COLUMN operation_type_id;
 
 -- Success message
 \echo 'Database migration completed successfully!'
